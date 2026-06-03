@@ -1,0 +1,4 @@
+name: eslint-checker-mvp
+status: proposed
+created_at: 2026-06-03
+summary: MVP for a single-project ESLint checker with iflycode orchestration and stable reporting.

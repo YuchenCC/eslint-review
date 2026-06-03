@@ -1,0 +1,13 @@
+{
+  "change": "eslint-checker-mvp",
+  "phase": "design",
+  "mode": "compact",
+  "canonical_spec": "openspec",
+  "generated_by": "comet-handoff.sh",
+  "context_hash": "e5c1ee3a52e4cd97723bc5aa461637487a2e1414039a6d2b40c289ec700df91c",
+  "files": [
+    { "path": "openspec/changes/eslint-checker-mvp/proposal.md", "sha256": "f0778f7a5eae52c825d4224470125fe9b730e92e6f3daddeef646ca356ee8f8a" },
+    { "path": "openspec/changes/eslint-checker-mvp/design.md", "sha256": "61aacf1186c3367940ef8623944361dad341adf6ad7f59a40436e6837d135c8b" },
+    { "path": "openspec/changes/eslint-checker-mvp/tasks.md", "sha256": "6db76dc1c9ac1d0f674f8b9fbf9f25b34f1fddb08fbc455a0974a83934696f3f" }
+  ]
+}

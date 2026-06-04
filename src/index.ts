@@ -3,6 +3,7 @@ import { analyzeEslintConfig } from "./analysis/configAnalysis.js";
 import { scanEslintDisable } from "./analysis/disableScan.js";
 import { detectEslintAccess } from "./discovery/eslintAccess.js";
 import { discoverProject } from "./discovery/project.js";
+import { executeLint } from "./lint/execute.js";
 
 const CHECKER_VERSION = "0.1.0";
 const SCHEMA_VERSION = "0.1.0";
@@ -16,6 +17,23 @@ export async function runChecker({ cwd, options }: RunCheckerInput): Promise<Che
     analyzeEslintConfig(cwd),
     scanEslintDisable(cwd)
   ]);
+  const normalizedTimeoutSeconds = Number.isNaN(timeoutSeconds) ? 120 : timeoutSeconds;
+  const lintExecution =
+    options.mode === "access"
+      ? {
+          status: "skipped" as const,
+          command: "",
+          timeoutSeconds: normalizedTimeoutSeconds,
+          exitCode: null,
+          durationMs: null,
+          skippedReason: "access_mode"
+        }
+      : await executeLint({
+          cwd,
+          outputDirectory,
+          timeoutSeconds: normalizedTimeoutSeconds,
+          eslintAccess
+        });
 
   return {
     schemaVersion: SCHEMA_VERSION,
@@ -44,12 +62,7 @@ export async function runChecker({ cwd, options }: RunCheckerInput): Promise<Che
     eslintConfigAnalysis,
     eslintDisableAnalysis,
     lintExecution: {
-      status: "skipped",
-      command: "",
-      timeoutSeconds: Number.isNaN(timeoutSeconds) ? 120 : timeoutSeconds,
-      exitCode: null,
-      durationMs: null,
-      skippedReason: "discovery_not_implemented"
+      ...lintExecution
     },
     lintRecovery: {
       enabled: options.recovery,

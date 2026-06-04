@@ -8,6 +8,7 @@ import { executeLint } from "./lint/execute.js";
 import { parseEslintJson } from "./lint/parse.js";
 import { recoverAndRetry } from "./lint/recovery.js";
 import { writeArtifacts } from "./report/artifacts.js";
+import { assessRisk } from "./report/risk.js";
 
 const CHECKER_VERSION = "0.1.0";
 const SCHEMA_VERSION = "0.1.0";
@@ -80,7 +81,7 @@ export async function runChecker({ cwd, options }: RunCheckerInput): Promise<Che
           fileSummary: []
         };
 
-  const report: CheckerReport = {
+  const reportWithoutRisk = {
     schemaVersion: SCHEMA_VERSION,
     checkerVersion: CHECKER_VERSION,
     generatedAt: new Date().toISOString(),
@@ -113,12 +114,6 @@ export async function runChecker({ cwd, options }: RunCheckerInput): Promise<Che
     lintResult: parsedLint.lintResult,
     ruleSummary: parsedLint.ruleSummary,
     fileSummary: parsedLint.fileSummary,
-    riskAssessment: {
-      level: "unknown",
-      score: 0,
-      reasons: [],
-      recommendations: []
-    },
     artifacts: {
       outputDirectory,
       reportJson: `${outputDirectory}/report.json`,
@@ -126,6 +121,10 @@ export async function runChecker({ cwd, options }: RunCheckerInput): Promise<Che
       eslintReportJson: `${outputDirectory}/eslint-report.json`,
       lintLog: `${outputDirectory}/lint-log.txt`
     }
+  };
+  const report: CheckerReport = {
+    ...reportWithoutRisk,
+    riskAssessment: assessRisk(reportWithoutRisk)
   };
 
   await writeArtifacts(cwd, report, logger.toText());

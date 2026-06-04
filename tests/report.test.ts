@@ -32,7 +32,8 @@ describe("report artifacts", () => {
       expect(reportJson).toMatchObject({
         schemaVersion: report.schemaVersion,
         projectInfo: { packageName: "report-fixture" },
-        lintExecution: { status: "skipped", skippedReason: "access_mode" }
+        lintExecution: { status: "skipped", skippedReason: "access_mode" },
+        riskAssessment: { level: "medium" }
       });
       expect(summary).toContain("ESLint Checker Summary");
       expect(summary).toContain("report-fixture");

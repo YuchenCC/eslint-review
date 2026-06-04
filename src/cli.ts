@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { Command } from "commander";
+import { Command, Option } from "commander";
 import { runChecker } from "./index.js";
 
 const program = new Command();
@@ -9,7 +9,7 @@ program
   .option("--system <name>", "system name")
   .option("--center <name>", "center name")
   .option("--owner <name>", "owner name")
-  .option("--mode <mode>", "check mode: access or full", "full")
+  .addOption(new Option("--mode <mode>", "check mode").choices(["access", "full"]).default("full"))
   .option("--output <dir>", "output directory", ".eslint-checker")
   .option("--timeout <seconds>", "ESLint timeout seconds", "120")
   .option("--for-iflycode", "emit iflycode-ready artifacts", false)

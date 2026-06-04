@@ -48,6 +48,27 @@ describe("project and ESLint discovery", () => {
       await rm(cwd, { force: true, recursive: true });
     }
   });
+
+  test("detects package eslintConfig as ESLint configuration", async () => {
+    const cwd = await createProject(
+      {
+        devDependencies: { eslint: "^9.0.0" },
+        eslintConfig: { rules: {} }
+      },
+      []
+    );
+
+    try {
+      await expect(detectEslintAccess(cwd)).resolves.toMatchObject({
+        eslintDependencyDetected: true,
+        eslintConfigDetected: true,
+        packageJsonEslintConfigDetected: true,
+        accessLevel: "partial"
+      });
+    } finally {
+      await rm(cwd, { force: true, recursive: true });
+    }
+  });
 });
 
 async function createProject(
@@ -65,3 +86,36 @@ async function createProject(
 
   return cwd;
 }
+
+  test("collects ESLint ecosystem packages and lint scripts", async () => {
+    const cwd = await createProject(
+      {
+        devDependencies: {
+          eslint: "^9.0.0",
+          "eslint-plugin-vue": "^9.0.0",
+          "@eslint/js": "^9.0.0",
+          "@typescript-eslint/parser": "^8.0.0"
+        },
+        scripts: {
+          lint: "eslint src",
+          "lint:report": "eslint src -f json",
+          build: "tsc"
+        }
+      },
+      [".eslintrc.json"]
+    );
+
+    try {
+      await expect(detectEslintAccess(cwd)).resolves.toMatchObject({
+        accessLevel: "well_connected",
+        eslintPackages: ["@eslint/js", "@typescript-eslint/parser", "eslint", "eslint-plugin-vue"],
+        configFiles: [".eslintrc.json"],
+        lintScripts: {
+          lint: "eslint src",
+          "lint:report": "eslint src -f json"
+        }
+      });
+    } finally {
+      await rm(cwd, { force: true, recursive: true });
+    }
+  });

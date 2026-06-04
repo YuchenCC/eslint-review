@@ -63,6 +63,7 @@ function isEslintPackage(packageName: string): boolean {
     packageName === "eslint" ||
     packageName.startsWith("eslint-") ||
     packageName.startsWith("@eslint/") ||
+    packageName.startsWith("@typescript-eslint/") ||
     packageName.includes("/eslint-")
   );
 }

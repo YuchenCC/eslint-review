@@ -1,4 +1,5 @@
 import type { CheckerReport, RunCheckerInput } from "./types.js";
+import { analyzeEslintConfig } from "./analysis/configAnalysis.js";
 import { detectEslintAccess } from "./discovery/eslintAccess.js";
 import { discoverProject } from "./discovery/project.js";
 
@@ -8,9 +9,10 @@ const SCHEMA_VERSION = "0.1.0";
 export async function runChecker({ cwd, options }: RunCheckerInput): Promise<CheckerReport> {
   const outputDirectory = options.output;
   const timeoutSeconds = Number.parseInt(options.timeout, 10);
-  const [projectDiscovery, eslintAccess] = await Promise.all([
+  const [projectDiscovery, eslintAccess, eslintConfigAnalysis] = await Promise.all([
     discoverProject(cwd),
-    detectEslintAccess(cwd)
+    detectEslintAccess(cwd),
+    analyzeEslintConfig(cwd)
   ]);
 
   return {
@@ -37,17 +39,7 @@ export async function runChecker({ cwd, options }: RunCheckerInput): Promise<Che
       packageManagerLockfile: projectDiscovery.packageManagerLockfile
     },
     eslintAccess,
-    eslintConfigAnalysis: {
-      status: "not_collected",
-      analyzedFiles: [],
-      disabledFormatRules: [],
-      disabledQualityRules: [],
-      disabledStackRules: [],
-      disabledRuleCount: 0,
-      weakenedStandardConfig: false,
-      limitations: [],
-      findings: []
-    },
+    eslintConfigAnalysis,
     eslintDisableAnalysis: {
       status: "not_collected",
       scannedDirectory: "src",

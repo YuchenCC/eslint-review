@@ -1,0 +1,8 @@
+{
+  "rules": {
+    "semi": "off",
+    "quotes": 0,
+    "no-unused-vars": "off",
+    "eqeqeq": 0
+  }
+}

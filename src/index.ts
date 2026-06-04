@@ -7,6 +7,7 @@ import { createLogger } from "./logger.js";
 import { executeLint } from "./lint/execute.js";
 import { parseEslintJson } from "./lint/parse.js";
 import { recoverAndRetry } from "./lint/recovery.js";
+import { writeArtifacts } from "./report/artifacts.js";
 
 const CHECKER_VERSION = "0.1.0";
 const SCHEMA_VERSION = "0.1.0";
@@ -22,6 +23,7 @@ export async function runChecker({ cwd, options }: RunCheckerInput): Promise<Che
   ]);
   const normalizedTimeoutSeconds = Number.isNaN(timeoutSeconds) ? 120 : timeoutSeconds;
   const logger = createLogger();
+  logger.info("Checker started");
   let lintRecovery: LintRecovery = {
     enabled: options.recovery,
     attempted: false,
@@ -78,7 +80,7 @@ export async function runChecker({ cwd, options }: RunCheckerInput): Promise<Che
           fileSummary: []
         };
 
-  return {
+  const report: CheckerReport = {
     schemaVersion: SCHEMA_VERSION,
     checkerVersion: CHECKER_VERSION,
     generatedAt: new Date().toISOString(),
@@ -125,6 +127,9 @@ export async function runChecker({ cwd, options }: RunCheckerInput): Promise<Che
       lintLog: `${outputDirectory}/lint-log.txt`
     }
   };
+
+  await writeArtifacts(cwd, report, logger.toText());
+  return report;
 }
 
 export type { CheckerReport, CheckerOptions, RunCheckerInput } from "./types.js";

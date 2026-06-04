@@ -9,8 +9,8 @@
 - [x] Implement safe ESLint JSON execution with timeout and artifact logging.
 - [x] Implement lint recovery for missing shared configs, plugins, and parsers, including controlled dev dependency installation and bounded retry.
 - [x] Implement ESLint JSON parsing into lint result, rule summary, and file summary.
-- [ ] Implement stable `report.json` schema and development-readable `summary.md`.
-- [ ] Implement `lint-log.txt` logging for commands, output, recovery, retries, and failures.
+- [x] Implement stable `report.json` schema and development-readable `summary.md`.
+- [x] Implement `lint-log.txt` logging for commands, output, recovery, retries, and failures.
 - [ ] Implement iflycode Skill workflow for installing/running `@sunny/eslint-checker`, waiting for report output, and generating the formal report.
 - [ ] Add tests or fixtures for no ESLint, partial ESLint, missing plugin/parser/config, config-disabled rules, disable-heavy `src`, and successful lint execution.
 - [ ] Write README usage examples for direct CLI usage and iflycode Skill usage.

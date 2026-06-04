@@ -19,6 +19,7 @@ export interface CheckerOptions {
   timeout: string;
   forIflycode: boolean;
   recovery: boolean;
+  rawEslintReport?: boolean;
   console?: boolean;
 }
 

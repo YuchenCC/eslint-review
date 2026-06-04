@@ -1,13 +1,37 @@
-import { describe, expect, test } from "vitest";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { tmpdir } from "node:os";
 import { executeLint } from "../src/lint/execute.js";
 import { parseEslintJson, parseEslintSummary } from "../src/lint/parse.js";
 import { buildInstallCommand, diagnoseMissingDependency } from "../src/lint/recovery.js";
 import type { EslintAccess } from "../src/types.js";
+import { runCommand } from "../src/utils/commands.js";
+
+vi.mock("../src/utils/commands.js", () => ({
+  runCommand: vi.fn()
+}));
+
+const mockedRunCommand = vi.mocked(runCommand);
+
+const connectedEslintAccess: EslintAccess = {
+  accessLevel: "connected",
+  eslintDependencyDetected: true,
+  eslintPackages: ["eslint"],
+  eslintConfigDetected: true,
+  configFiles: ["eslint.config.js"],
+  packageJsonEslintConfigDetected: false,
+  lintScriptDetected: true,
+  lintScripts: {
+    lint: "eslint ."
+  }
+};
 
 describe("lint execution", () => {
+  beforeEach(() => {
+    mockedRunCommand.mockReset();
+  });
+
   test("skips execution when ESLint is not connected", async () => {
     const eslintAccess: EslintAccess = {
       accessLevel: "not_connected",
@@ -33,6 +57,104 @@ describe("lint execution", () => {
       exitCode: null,
       skippedReason: "eslint_not_connected"
     });
+  });
+
+  test("runs ESLint with the summary formatter by default", async () => {
+    const tempDirectory = await mkdtemp(path.join(tmpdir(), "eslint-execute-summary-"));
+    try {
+      await mkdir(path.join(tempDirectory, ".eslint-checker"), { recursive: true });
+      await writeFile(path.join(tempDirectory, ".eslint-checker", "eslint-summary.json"), "{}", "utf8");
+      mockedRunCommand.mockResolvedValueOnce({
+        exitCode: 1,
+        stdout: "",
+        stderr: "",
+        durationMs: 25,
+        timedOut: false
+      });
+
+      const logger = memoryLogger();
+      await expect(
+        executeLint({
+          cwd: tempDirectory,
+          outputDirectory: ".eslint-checker",
+          timeoutSeconds: 10,
+          eslintAccess: connectedEslintAccess,
+          logger
+        })
+      ).resolves.toMatchObject({
+        status: "success",
+        command: "npx eslint . -f src/lint/summaryFormatter.js -o .eslint-checker/eslint-summary.json",
+        exitCode: 1,
+        durationMs: 25
+      });
+
+      expect(mockedRunCommand).toHaveBeenCalledTimes(1);
+      expect(mockedRunCommand).toHaveBeenCalledWith({
+        cwd: tempDirectory,
+        command: "npx",
+        args: ["eslint", ".", "-f", "src/lint/summaryFormatter.js", "-o", ".eslint-checker/eslint-summary.json"],
+        timeoutMs: 10000
+      });
+      expect(logger.commands).toEqual([
+        "npx eslint . -f src/lint/summaryFormatter.js -o .eslint-checker/eslint-summary.json"
+      ]);
+    } finally {
+      await rm(tempDirectory, { recursive: true, force: true });
+    }
+  });
+
+  test("optionally emits raw ESLint JSON without failing primary execution", async () => {
+    const tempDirectory = await mkdtemp(path.join(tmpdir(), "eslint-execute-raw-"));
+    try {
+      await mkdir(path.join(tempDirectory, ".eslint-checker"), { recursive: true });
+      await writeFile(path.join(tempDirectory, ".eslint-checker", "eslint-summary.json"), "{}", "utf8");
+      mockedRunCommand
+        .mockResolvedValueOnce({
+          exitCode: 0,
+          stdout: "",
+          stderr: "",
+          durationMs: 30,
+          timedOut: false
+        })
+        .mockResolvedValueOnce({
+          exitCode: 2,
+          stdout: "",
+          stderr: "raw formatter failed",
+          durationMs: 10,
+          timedOut: false
+        });
+
+      const logger = memoryLogger();
+      await expect(
+        executeLint({
+          cwd: tempDirectory,
+          outputDirectory: ".eslint-checker",
+          timeoutSeconds: 10,
+          eslintAccess: connectedEslintAccess,
+          rawEslintReport: true,
+          logger
+        })
+      ).resolves.toMatchObject({
+        status: "success",
+        command: "npx eslint . -f src/lint/summaryFormatter.js -o .eslint-checker/eslint-summary.json",
+        exitCode: 0,
+        durationMs: 30
+      });
+
+      expect(mockedRunCommand).toHaveBeenNthCalledWith(2, {
+        cwd: tempDirectory,
+        command: "npx",
+        args: ["eslint", ".", "-f", "json", "-o", ".eslint-checker/eslint-report.json"],
+        timeoutMs: 10000
+      });
+      expect(logger.commands).toEqual([
+        "npx eslint . -f src/lint/summaryFormatter.js -o .eslint-checker/eslint-summary.json",
+        "npx eslint . -f json -o .eslint-checker/eslint-report.json"
+      ]);
+      expect(logger.errors).toEqual(["raw formatter failed"]);
+    } finally {
+      await rm(tempDirectory, { recursive: true, force: true });
+    }
   });
 
   test.each([
@@ -329,3 +451,18 @@ describe("lint execution", () => {
     }
   });
 });
+
+function memoryLogger() {
+  const infos: string[] = [];
+  const errors: string[] = [];
+  const commands: string[] = [];
+  return {
+    infos,
+    errors,
+    commands,
+    info: (message: string) => infos.push(message),
+    error: (message: string) => errors.push(message),
+    command: (message: string) => commands.push(message),
+    toText: () => ""
+  };
+}

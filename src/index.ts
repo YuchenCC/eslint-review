@@ -62,6 +62,7 @@ export async function runChecker({ cwd, options }: RunCheckerInput): Promise<Che
           outputDirectory,
           timeoutSeconds: normalizedTimeoutSeconds,
           eslintAccess,
+          rawEslintReport: options.rawEslintReport,
           logger
         });
 
@@ -72,6 +73,7 @@ export async function runChecker({ cwd, options }: RunCheckerInput): Promise<Che
       outputDirectory,
       timeoutSeconds: normalizedTimeoutSeconds,
       eslintAccess,
+      rawEslintReport: options.rawEslintReport,
       packageManager: projectDiscovery.packageManager,
       failedExecution: lintExecution,
       logger

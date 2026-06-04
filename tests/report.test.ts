@@ -225,6 +225,7 @@ describe("report artifacts", () => {
       });
 
       expect(checkerReportSchema.safeParse(report).success).toBe(true);
+      expect(checkerReportSchema.safeParse({ ...report, schemaVersion: "0.1.0" }).success).toBe(false);
       expect(checkerReportSchema.safeParse({ ...report, lintEvidence: undefined }).success).toBe(false);
       expect(
         checkerReportSchema.safeParse({

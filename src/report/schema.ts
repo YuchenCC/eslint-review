@@ -22,7 +22,7 @@ const lintEvidenceSchema = z.object({
 });
 
 export const checkerReportSchema = z.object({
-  schemaVersion: z.string(),
+  schemaVersion: z.literal("0.2.0"),
   checkerVersion: z.string(),
   generatedAt: z.string(),
   systemInfo: z.object({

@@ -133,7 +133,7 @@ export interface LintResult {
   fixableErrorCount: number;
   fixableWarningCount: number;
   fileCount: number;
-  problemFileCount?: number;
+  problemFileCount: number;
   failureReason?: string;
 }
 
@@ -181,9 +181,7 @@ export interface LintEvidence {
 export interface EslintSummary {
   schemaVersion: string;
   generatedAt: string;
-  lintResult: LintResult & {
-    problemFileCount: number;
-  };
+  lintResult: LintResult;
   ruleSummary: RuleSummaryItem[];
   fileSummary: FileSummaryItem[];
   evidence: LintEvidence;
@@ -223,7 +221,7 @@ export interface CheckerReport {
   lintResult: LintResult;
   ruleSummary: RuleSummaryItem[];
   fileSummary: FileSummaryItem[];
-  lintEvidence?: LintEvidence;
+  lintEvidence: LintEvidence;
   riskAssessment: RiskAssessment;
   artifacts: Artifacts;
 }

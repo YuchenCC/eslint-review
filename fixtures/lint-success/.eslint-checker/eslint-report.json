@@ -1,0 +1,34 @@
+[
+  {
+    "filePath": "src/a.ts",
+    "errorCount": 1,
+    "warningCount": 1,
+    "fixableErrorCount": 1,
+    "fixableWarningCount": 1,
+    "messages": [
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 2,
+        "fix": {}
+      },
+      {
+        "ruleId": "no-console",
+        "severity": 1,
+        "fix": {}
+      }
+    ]
+  },
+  {
+    "filePath": "src/b.ts",
+    "errorCount": 1,
+    "warningCount": 0,
+    "fixableErrorCount": 0,
+    "fixableWarningCount": 0,
+    "messages": [
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 2
+      }
+    ]
+  }
+]

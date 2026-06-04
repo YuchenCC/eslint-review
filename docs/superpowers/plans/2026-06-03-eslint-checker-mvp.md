@@ -2,6 +2,7 @@
 change: eslint-checker-mvp
 design-doc: docs/superpowers/specs/2026-06-03-eslint-checker-mvp-design.md
 base-ref: dcfe71087978b98c624bc236b5ac8e76f4a2276b
+archived-with: 2026-06-04-eslint-checker-mvp
 ---
 
 # ESLint Checker MVP Implementation Plan
@@ -14,6 +15,7 @@ base-ref: dcfe71087978b98c624bc236b5ac8e76f4a2276b
 
 **Tech Stack:** Node.js, TypeScript, Vitest, commander, execa, fast-glob, fs-extra, zod, yaml.
 
+archived-with: 2026-06-04-eslint-checker-mvp
 ---
 
 ## File Structure

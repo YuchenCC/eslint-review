@@ -2,6 +2,8 @@
 comet_change: eslint-checker-mvp
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-06-04-eslint-checker-mvp
+status: final
 ---
 
 # eslint-checker-mvp Design

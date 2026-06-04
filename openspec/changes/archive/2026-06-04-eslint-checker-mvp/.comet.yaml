@@ -12,6 +12,6 @@ verification_report: docs/superpowers/reports/2026-06-04-eslint-checker-mvp-veri
 branch_status: handled
 created_at: 2026-06-03
 verified_at: 2026-06-04
-archived: false
+archived: true
 handoff_context: openspec/changes/eslint-checker-mvp/.comet/handoff/design-context.json
 handoff_hash: e5c1ee3a52e4cd97723bc5aa461637487a2e1414039a6d2b40c289ec700df91c

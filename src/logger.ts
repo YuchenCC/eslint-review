@@ -13,8 +13,13 @@ export interface Logger {
   toText(): string;
 }
 
-export function createLogger(): Logger {
+export interface LoggerOptions {
+  console?: boolean;
+}
+
+export function createLogger(options: LoggerOptions = {}): Logger {
   const entries: LogEntry[] = [];
+  const emitConsole = options.console ?? false;
 
   function add(level: LogLevel, message: string): void {
     entries.push({
@@ -22,6 +27,14 @@ export function createLogger(): Logger {
       message,
       timestamp: new Date().toISOString()
     });
+    if (emitConsole) {
+      const formattedMessage = `[eslint-checker] ${message}`;
+      if (level === "error") {
+        console.error(formattedMessage);
+      } else {
+        console.log(formattedMessage);
+      }
+    }
   }
 
   return {

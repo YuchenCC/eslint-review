@@ -34,13 +34,14 @@ Wait for `.eslint-checker/report.json`. If it is missing, inspect `.eslint-check
 - Treat `.eslint-checker/report.json` as the only source of factual counts and statuses.
 - Do not invent lint counts, disabled-rule counts, package data, or execution status.
 - Use `unknown`, `not_collected`, `skipped`, or recorded failure reasons when facts are absent.
-- Mention generated artifacts: `report.json`, `summary.md`, `eslint-report.json`, and `lint-log.txt`.
+- Mention generated artifacts: `report.json`, `summary.md`, `eslint-report.json`, `eslint-config.json`, and `lint-log.txt`.
+- Distinguish `eslintConfigAnalysis` from `eslintResolvedConfig`: config quality is static governance analysis, while `eslint-config.json` is the resolved effective config emitted from ESLint `--print-config`.
 
 ## Report Sections
 
 1. Project overview: package, stack, Git status, Node/package manager.
 2. ESLint access: dependency, config, `eslintConfig`, and lint script status.
-3. Config quality: disabled format, quality, and stack-specific rules.
+3. Config quality: disabled format, quality, stack-specific rules, and resolved config collection status.
 4. Disable usage: total disables, file-level disables, broad disables, and concentrated files.
 5. Lint execution: command, status, timeout, exit code, and recovery.
 6. Findings and risk: use `riskAssessment` reasons and recommendations.

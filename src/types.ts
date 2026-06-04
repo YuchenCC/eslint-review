@@ -19,6 +19,7 @@ export interface CheckerOptions {
   timeout: string;
   forIflycode: boolean;
   recovery: boolean;
+  console?: boolean;
 }
 
 export interface RunCheckerInput {
@@ -69,6 +70,8 @@ export interface EslintAccess {
 export interface EslintConfigAnalysis {
   status: CollectionStatus;
   analyzedFiles: string[];
+  extendedConfigs: string[];
+  extendedPackages: string[];
   disabledFormatRules: string[];
   disabledQualityRules: string[];
   disabledStackRules: string[];
@@ -110,6 +113,18 @@ export interface LintRecovery {
   failureReason?: string;
 }
 
+export interface EslintResolvedConfig {
+  status: CollectionStatus;
+  command: string;
+  timeoutSeconds: number;
+  exitCode: number | null;
+  durationMs: number | null;
+  targetFile: string;
+  outputPath: string;
+  skippedReason?: string;
+  failureReason?: string;
+}
+
 export interface LintResult {
   status: CollectionStatus;
   errorCount: number;
@@ -146,6 +161,7 @@ export interface Artifacts {
   reportJson: string;
   summaryMarkdown: string;
   eslintReportJson: string;
+  eslintConfigJson: string;
   lintLog: string;
 }
 
@@ -158,6 +174,7 @@ export interface CheckerReport {
   projectInfo: ProjectInfo;
   eslintAccess: EslintAccess;
   eslintConfigAnalysis: EslintConfigAnalysis;
+  eslintResolvedConfig: EslintResolvedConfig;
   eslintDisableAnalysis: EslintDisableAnalysis;
   lintExecution: LintExecution;
   lintRecovery: LintRecovery;

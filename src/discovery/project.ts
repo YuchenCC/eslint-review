@@ -82,7 +82,7 @@ async function detectStack(cwd: string, packageNames: string[]): Promise<StackNa
   if (packages.has("next") || hasAny(configFiles, ["next.config"])) {
     return "next";
   }
-  if (packages.has("vue") || packages.has("@vue/cli-service")) {
+  if (packages.has("vue") || packages.has("@vue/cli-service") || packages.has("jupui")) {
     return "vue";
   }
   if (packages.has("react") || packages.has("react-dom")) {

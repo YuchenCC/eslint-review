@@ -38,6 +38,7 @@ export async function analyzeEslintConfig(cwd: string): Promise<EslintConfigAnal
   const analyzedFiles: string[] = [];
   const limitations: string[] = [];
   const disabledRules = new Set<string>();
+  const extendedConfigs = new Set<string>();
   let weakenedStandardConfig = false;
 
   const jsonFiles = await listExistingFiles(cwd, JSON_CONFIG_FILES);
@@ -48,6 +49,7 @@ export async function analyzeEslintConfig(cwd: string): Promise<EslintConfigAnal
       continue;
     }
     analyzedFiles.push(fileName);
+    collectExtendedConfigsFromConfig(config, extendedConfigs);
     collectDisabledRulesFromConfig(config, disabledRules);
     weakenedStandardConfig ||= weakensStandardConfig(config);
   }
@@ -63,6 +65,7 @@ export async function analyzeEslintConfig(cwd: string): Promise<EslintConfigAnal
     try {
       const config = YAML.parse(content) as EslintConfigObject;
       analyzedFiles.push(fileName);
+      collectExtendedConfigsFromConfig(config, extendedConfigs);
       collectDisabledRulesFromConfig(config, disabledRules);
       weakenedStandardConfig ||= weakensStandardConfig(config);
     } catch {
@@ -74,6 +77,7 @@ export async function analyzeEslintConfig(cwd: string): Promise<EslintConfigAnal
   if (packageJson?.eslintConfig) {
     analyzedFiles.push("package.json#eslintConfig");
     const config = packageJson.eslintConfig as EslintConfigObject;
+    collectExtendedConfigsFromConfig(config, extendedConfigs);
     collectDisabledRulesFromConfig(config, disabledRules);
     weakenedStandardConfig ||= weakensStandardConfig(config);
   }
@@ -86,6 +90,7 @@ export async function analyzeEslintConfig(cwd: string): Promise<EslintConfigAnal
       continue;
     }
     analyzedFiles.push(fileName);
+    collectExtendedConfigsFromText(content, extendedConfigs);
     collectDisabledRulesFromText(content, disabledRules);
     weakenedStandardConfig ||= /extends\s*:\s*[^,\]}]*(standard|airbnb|recommended)/i.test(content);
   }
@@ -102,6 +107,8 @@ export async function analyzeEslintConfig(cwd: string): Promise<EslintConfigAnal
   return {
     status: "success",
     analyzedFiles,
+    extendedConfigs: [...extendedConfigs],
+    extendedPackages: [...new Set([...extendedConfigs].map(toEslintConfigPackage).filter(isPresent))],
     disabledFormatRules,
     disabledQualityRules,
     disabledStackRules,
@@ -116,6 +123,15 @@ export async function analyzeEslintConfig(cwd: string): Promise<EslintConfigAnal
       weakenedStandardConfig: weakenedStandardConfig && disabledRuleCount >= 3
     })
   };
+}
+
+function collectExtendedConfigsFromConfig(config: EslintConfigObject, extendedConfigs: Set<string>): void {
+  const values = Array.isArray(config.extends) ? config.extends : [config.extends];
+  for (const value of values) {
+    if (typeof value === "string" && value.length > 0) {
+      extendedConfigs.add(value);
+    }
+  }
 }
 
 function collectDisabledRulesFromConfig(config: EslintConfigObject, disabledRules: Set<string>): void {
@@ -140,6 +156,58 @@ function collectDisabledRulesFromText(content: string, disabledRules: Set<string
   for (const match of content.matchAll(DISABLED_TEXT_PATTERN)) {
     disabledRules.add(match[1]);
   }
+}
+
+function collectExtendedConfigsFromText(content: string, extendedConfigs: Set<string>): void {
+  const match = content.match(/extends\s*:\s*(\[[\s\S]*?\]|["'`][^"'`]+["'`])/m);
+  if (!match) {
+    return;
+  }
+
+  for (const valueMatch of match[1].matchAll(/["'`]([^"'`]+)["'`]/g)) {
+    extendedConfigs.add(valueMatch[1]);
+  }
+}
+
+function toEslintConfigPackage(configName: string): string | undefined {
+  if (configName.startsWith("eslint:")) {
+    return "eslint";
+  }
+
+  const pluginMatch = configName.match(/^plugin:([^/]+)\//);
+  if (pluginMatch) {
+    return toEslintPluginPackage(pluginMatch[1]);
+  }
+
+  if (configName.startsWith(".")) {
+    return undefined;
+  }
+
+  if (configName.startsWith("@")) {
+    const [scope, name = ""] = configName.split("/");
+    if (name === "eslint-config" || name.startsWith("eslint-config-")) {
+      return configName;
+    }
+    return name.length > 0 ? `${scope}/eslint-config-${name}` : undefined;
+  }
+
+  return configName.startsWith("eslint-config-") ? configName : `eslint-config-${configName}`;
+}
+
+function toEslintPluginPackage(pluginName: string): string {
+  if (pluginName.startsWith("@")) {
+    const [scope, name = ""] = pluginName.split("/");
+    if (name === "" || name === "eslint-plugin") {
+      return `${scope}/eslint-plugin`;
+    }
+    return name.startsWith("eslint-plugin-") ? pluginName : `${scope}/eslint-plugin-${name}`;
+  }
+
+  return pluginName.startsWith("eslint-plugin-") ? pluginName : `eslint-plugin-${pluginName}`;
+}
+
+function isPresent(value: string | undefined): value is string {
+  return value !== undefined;
 }
 
 function isDisabledRuleValue(ruleValue: unknown): boolean {
@@ -191,6 +259,8 @@ function emptyAnalysis(status: EslintConfigAnalysis["status"], limitations: stri
   return {
     status,
     analyzedFiles: [],
+    extendedConfigs: [],
+    extendedPackages: [],
     disabledFormatRules: [],
     disabledQualityRules: [],
     disabledStackRules: [],

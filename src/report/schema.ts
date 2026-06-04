@@ -41,6 +41,8 @@ export const checkerReportSchema = z.object({
   eslintConfigAnalysis: z.object({
     status: z.string(),
     analyzedFiles: z.array(z.string()),
+    extendedConfigs: z.array(z.string()),
+    extendedPackages: z.array(z.string()),
     disabledFormatRules: z.array(z.string()),
     disabledQualityRules: z.array(z.string()),
     disabledStackRules: z.array(z.string()),
@@ -48,6 +50,17 @@ export const checkerReportSchema = z.object({
     weakenedStandardConfig: z.boolean(),
     limitations: z.array(z.string()),
     findings: z.array(z.string())
+  }),
+  eslintResolvedConfig: z.object({
+    status: z.string(),
+    command: z.string(),
+    timeoutSeconds: z.number(),
+    exitCode: z.number().nullable(),
+    durationMs: z.number().nullable(),
+    targetFile: z.string(),
+    outputPath: z.string(),
+    skippedReason: z.string().optional(),
+    failureReason: z.string().optional()
   }),
   eslintDisableAnalysis: z.object({
     status: z.string(),
@@ -96,6 +109,7 @@ export const checkerReportSchema = z.object({
     reportJson: z.string(),
     summaryMarkdown: z.string(),
     eslintReportJson: z.string(),
+    eslintConfigJson: z.string(),
     lintLog: z.string()
   })
 });

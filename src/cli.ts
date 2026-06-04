@@ -18,5 +18,8 @@ program
 
 await runChecker({
   cwd: process.cwd(),
-  options: program.opts()
+  options: {
+    ...program.opts(),
+    console: true
+  }
 });

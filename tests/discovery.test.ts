@@ -31,6 +31,7 @@ describe("project and ESLint discovery", () => {
 
   test.each([
     ["vue", { dependencies: { vue: "^3.0.0" } }, []],
+    ["vue", { dependencies: { jupui: "^1.0.0" } }, []],
     ["react", { dependencies: { react: "^18.0.0", "react-dom": "^18.0.0" } }, []],
     ["umi", { dependencies: { "@umijs/max": "^4.0.0" } }, []],
     ["next", { dependencies: { next: "^14.0.0", react: "^18.0.0" } }, []],

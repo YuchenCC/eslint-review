@@ -25,6 +25,9 @@ function renderSummary(report: CheckerReport): string {
     `Stack: ${report.projectInfo.stack}`,
     `ESLint access: ${report.eslintAccess.accessLevel}`,
     `Config analysis: ${report.eslintConfigAnalysis.status}`,
+    `Resolved config: ${report.eslintResolvedConfig.status}`,
+    `Extended configs: ${report.eslintConfigAnalysis.extendedConfigs.join(", ") || "none"}`,
+    `Extended packages: ${report.eslintConfigAnalysis.extendedPackages.join(", ") || "none"}`,
     `Disable count: ${report.eslintDisableAnalysis.totalDisableCount}`,
     `Lint execution: ${report.lintExecution.status}`,
     `Recovery: ${report.lintRecovery.status}`,
@@ -35,6 +38,7 @@ function renderSummary(report: CheckerReport): string {
     `- report.json: ${report.artifacts.reportJson}`,
     `- summary.md: ${report.artifacts.summaryMarkdown}`,
     `- eslint-report.json: ${report.artifacts.eslintReportJson}`,
+    `- eslint-config.json: ${report.artifacts.eslintConfigJson}`,
     `- lint-log.txt: ${report.artifacts.lintLog}`,
     ""
   ].join("\n");

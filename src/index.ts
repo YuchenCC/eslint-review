@@ -1,6 +1,7 @@
 import type { CheckerReport, LintRecovery, RunCheckerInput } from "./types.js";
 import { analyzeEslintConfig } from "./analysis/configAnalysis.js";
 import { scanEslintDisable } from "./analysis/disableScan.js";
+import { collectResolvedEslintConfig } from "./analysis/resolvedConfig.js";
 import { detectEslintAccess } from "./discovery/eslintAccess.js";
 import { discoverProject } from "./discovery/project.js";
 import { createLogger } from "./logger.js";
@@ -16,6 +17,9 @@ const SCHEMA_VERSION = "0.1.0";
 export async function runChecker({ cwd, options }: RunCheckerInput): Promise<CheckerReport> {
   const outputDirectory = options.output;
   const timeoutSeconds = Number.parseInt(options.timeout, 10);
+  const logger = createLogger({ console: options.console });
+  logger.info("[1/7] Initializing check");
+  logger.info("[2/7] Discovering project and static ESLint context");
   const [projectDiscovery, eslintAccess, eslintConfigAnalysis, eslintDisableAnalysis] = await Promise.all([
     discoverProject(cwd),
     detectEslintAccess(cwd),
@@ -23,7 +27,6 @@ export async function runChecker({ cwd, options }: RunCheckerInput): Promise<Che
     scanEslintDisable(cwd)
   ]);
   const normalizedTimeoutSeconds = Number.isNaN(timeoutSeconds) ? 120 : timeoutSeconds;
-  const logger = createLogger();
   logger.info("Checker started");
   let lintRecovery: LintRecovery = {
     enabled: options.recovery,
@@ -34,6 +37,16 @@ export async function runChecker({ cwd, options }: RunCheckerInput): Promise<Che
     installCommand: "",
     modifiedFiles: []
   };
+  logger.info("[3/7] Collecting resolved ESLint config");
+  const eslintResolvedConfig = await collectResolvedEslintConfig({
+    cwd,
+    outputDirectory,
+    timeoutSeconds: normalizedTimeoutSeconds,
+    eslintAccess,
+    logger
+  });
+
+  logger.info("[4/7] Collecting ESLint results");
   let lintExecution =
     options.mode === "access"
       ? {
@@ -53,6 +66,7 @@ export async function runChecker({ cwd, options }: RunCheckerInput): Promise<Che
         });
 
   if (options.recovery && lintExecution.status === "failed") {
+    logger.info("Recovery enabled: attempting dependency recovery and retry");
     const recovered = await recoverAndRetry({
       cwd,
       outputDirectory,
@@ -65,6 +79,7 @@ export async function runChecker({ cwd, options }: RunCheckerInput): Promise<Che
     lintExecution = recovered.lintExecution;
     lintRecovery = recovered.lintRecovery;
   }
+  logger.info("[5/7] Parsing ESLint output");
   const parsedLint =
     lintExecution.status === "success"
       ? await parseEslintJson(`${cwd}/${outputDirectory}/eslint-report.json`)
@@ -81,6 +96,7 @@ export async function runChecker({ cwd, options }: RunCheckerInput): Promise<Che
           fileSummary: []
         };
 
+  logger.info("[6/7] Assessing risk and composing report");
   const reportWithoutRisk = {
     schemaVersion: SCHEMA_VERSION,
     checkerVersion: CHECKER_VERSION,
@@ -106,6 +122,7 @@ export async function runChecker({ cwd, options }: RunCheckerInput): Promise<Che
     },
     eslintAccess,
     eslintConfigAnalysis,
+    eslintResolvedConfig,
     eslintDisableAnalysis,
     lintExecution: {
       ...lintExecution
@@ -119,6 +136,7 @@ export async function runChecker({ cwd, options }: RunCheckerInput): Promise<Che
       reportJson: `${outputDirectory}/report.json`,
       summaryMarkdown: `${outputDirectory}/summary.md`,
       eslintReportJson: `${outputDirectory}/eslint-report.json`,
+      eslintConfigJson: `${outputDirectory}/eslint-config.json`,
       lintLog: `${outputDirectory}/lint-log.txt`
     }
   };
@@ -127,7 +145,9 @@ export async function runChecker({ cwd, options }: RunCheckerInput): Promise<Che
     riskAssessment: assessRisk(reportWithoutRisk)
   };
 
+  logger.info("[7/7] Writing report artifacts");
   await writeArtifacts(cwd, report, logger.toText());
+  logger.info(`Done. Report: ${outputDirectory}/report.json`);
   return report;
 }
 

@@ -2,3 +2,7 @@
 .DS_Store
 dist/
 node_modules/
+docs/baseprd.docx
+*.tgz
+skills-lock.json
+jup/

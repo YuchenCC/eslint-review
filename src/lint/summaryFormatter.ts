@@ -82,6 +82,7 @@ export function buildEslintSummary(
         fixableCount: 0
       };
       existing.count += 1;
+      existing.severity = promotedSeverity(existing.severity, severity);
       if (message.fix !== undefined) {
         existing.fixableCount += 1;
       }
@@ -162,9 +163,22 @@ function severityName(severity: number | undefined): RuleSummaryItem["severity"]
   return "unknown";
 }
 
+function promotedSeverity(
+  current: RuleSummaryItem["severity"],
+  next: RuleSummaryItem["severity"]
+): RuleSummaryItem["severity"] {
+  if (current === "error" || next === "error") {
+    return "error";
+  }
+  if (current === "warning" || next === "warning") {
+    return "warning";
+  }
+  return "unknown";
+}
+
 function normalizeFilePath(filePath: string, cwd?: string): string {
-  const relativePath = cwd ? path.relative(cwd, filePath) : filePath;
-  return relativePath.split(path.sep).join("/");
+  const relativePath = cwd && path.isAbsolute(filePath) ? path.relative(cwd, filePath) : filePath;
+  return relativePath.replaceAll("\\", "/");
 }
 
 function truncateMessage(message: string, maxLength: number): string {

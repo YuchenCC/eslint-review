@@ -143,7 +143,7 @@ describe("eslint summary formatter", () => {
   });
 
   test("uses fatal and unknown defaults, slash-normalizes relative paths, and emits pretty json", () => {
-    const cwd = path.join("repo", "project");
+    const cwd = path.join("/", "repo", "project");
     const filePath = path.join(cwd, "src", "nested", "file.ts");
     const summary = buildEslintSummary(
       [
@@ -172,5 +172,37 @@ describe("eslint summary formatter", () => {
     expect(formatted).toMatch(/\n}\n$/);
     expect(formatted.endsWith("\n")).toBe(true);
     expect(JSON.parse(formatted)).toMatchObject({ schemaVersion: "0.1.0" });
+  });
+
+  test("promotes rule severity to error and preserves relative file paths when cwd is absolute", () => {
+    const summary = buildEslintSummary(
+      [
+        {
+          filePath: "src\\relative.ts",
+          errorCount: 1,
+          warningCount: 1,
+          messages: [
+            {
+              ruleId: "mixed-severity",
+              severity: 1,
+              line: 1,
+              column: 1,
+              message: "warning first"
+            },
+            {
+              ruleId: "mixed-severity",
+              severity: 2,
+              line: 2,
+              column: 1,
+              message: "error later"
+            }
+          ]
+        }
+      ],
+      { cwd: "/repo" }
+    );
+
+    expect(summary.ruleSummary).toEqual([{ ruleId: "mixed-severity", severity: "error", count: 2, fixableCount: 0 }]);
+    expect(summary.fileSummary[0].filePath).toBe("src/relative.ts");
   });
 });

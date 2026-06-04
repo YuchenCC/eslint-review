@@ -132,6 +132,7 @@ export interface LintResult {
   fixableErrorCount: number;
   fixableWarningCount: number;
   fileCount: number;
+  problemFileCount?: number;
   failureReason?: string;
 }
 
@@ -147,6 +148,45 @@ export interface FileSummaryItem {
   errorCount: number;
   warningCount: number;
   disableCount: number;
+}
+
+export interface FormatterLimits {
+  maxRules: number;
+  maxFiles: number;
+  maxExamplesPerRule: number;
+  maxExamplesPerFile: number;
+  maxMessageLength: number;
+}
+
+export interface LintEvidenceExample {
+  ruleId: string;
+  severity: "error" | "warning" | "unknown";
+  filePath: string;
+  line: number;
+  column: number;
+  message: string;
+}
+
+export interface LintEvidence {
+  topRuleExamples: LintEvidenceExample[];
+  topFileExamples: Array<{
+    filePath: string;
+    errorCount: number;
+    warningCount: number;
+    examples: LintEvidenceExample[];
+  }>;
+}
+
+export interface EslintSummary {
+  schemaVersion: string;
+  generatedAt: string;
+  lintResult: LintResult & {
+    problemFileCount: number;
+  };
+  ruleSummary: RuleSummaryItem[];
+  fileSummary: FileSummaryItem[];
+  evidence: LintEvidence;
+  limits: FormatterLimits;
 }
 
 export interface RiskAssessment {
@@ -181,6 +221,7 @@ export interface CheckerReport {
   lintResult: LintResult;
   ruleSummary: RuleSummaryItem[];
   fileSummary: FileSummaryItem[];
+  lintEvidence?: LintEvidence;
   riskAssessment: RiskAssessment;
   artifacts: Artifacts;
 }

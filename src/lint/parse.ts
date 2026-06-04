@@ -1,21 +1,5 @@
-import path from "node:path";
 import type { FileSummaryItem, LintEvidence, LintResult, RuleSummaryItem } from "../types.js";
 import { pathExists, readJsonFile } from "../utils/fs.js";
-
-interface EslintJsonFile {
-  filePath: string;
-  errorCount?: number;
-  warningCount?: number;
-  fixableErrorCount?: number;
-  fixableWarningCount?: number;
-  messages?: EslintJsonMessage[];
-}
-
-interface EslintJsonMessage {
-  ruleId?: string | null;
-  severity?: number;
-  fix?: unknown;
-}
 
 export interface ParsedEslintSummary {
   lintResult: LintResult;
@@ -39,67 +23,6 @@ export async function parseEslintSummary(summaryPath: string): Promise<ParsedEsl
     ruleSummary: summary.ruleSummary,
     fileSummary: summary.fileSummary,
     lintEvidence: isLintEvidence(summary.evidence) ? summary.evidence : emptyEvidence()
-  };
-}
-
-export type ParsedEslintJson = ParsedEslintSummary;
-
-export async function parseEslintJson(reportPath: string): Promise<ParsedEslintJson> {
-  const files = await readJsonFile<unknown>(reportPath);
-  if (!isEslintJsonFiles(files)) {
-    return failedSummary("eslint_json_unavailable");
-  }
-
-  const ruleCounts = new Map<string, RuleSummaryItem>();
-  let errorCount = 0;
-  let warningCount = 0;
-  let fixableErrorCount = 0;
-  let fixableWarningCount = 0;
-
-  const fileSummary = files.map((file) => {
-    const fileErrorCount = file.errorCount ?? 0;
-    const fileWarningCount = file.warningCount ?? 0;
-    errorCount += fileErrorCount;
-    warningCount += fileWarningCount;
-    fixableErrorCount += file.fixableErrorCount ?? 0;
-    fixableWarningCount += file.fixableWarningCount ?? 0;
-
-    for (const message of file.messages ?? []) {
-      const ruleId = message.ruleId ?? "fatal";
-      const existing = ruleCounts.get(ruleId) ?? {
-        ruleId,
-        severity: severityName(message.severity),
-        count: 0,
-        fixableCount: 0
-      };
-      existing.count += 1;
-      if (message.fix !== undefined) {
-        existing.fixableCount += 1;
-      }
-      ruleCounts.set(ruleId, existing);
-    }
-
-    return {
-      filePath: normalizeFilePath(file.filePath),
-      errorCount: fileErrorCount,
-      warningCount: fileWarningCount,
-      disableCount: 0
-    };
-  });
-
-  return {
-    lintResult: {
-      status: "success",
-      errorCount,
-      warningCount,
-      fixableErrorCount,
-      fixableWarningCount,
-      fileCount: files.length,
-      problemFileCount: fileSummary.filter((file) => file.errorCount + file.warningCount > 0).length
-    },
-    ruleSummary: [...ruleCounts.values()].sort((left, right) => right.count - left.count || left.ruleId.localeCompare(right.ruleId)),
-    fileSummary,
-    lintEvidence: emptyEvidence()
   };
 }
 
@@ -208,54 +131,12 @@ function isTopFileEvidence(value: unknown): boolean {
   );
 }
 
-function isEslintJsonFiles(value: unknown): value is EslintJsonFile[] {
-  return Array.isArray(value) && value.every(isEslintJsonFile);
-}
-
-function isEslintJsonFile(value: unknown): value is EslintJsonFile {
-  return (
-    isRecord(value) &&
-    typeof value.filePath === "string" &&
-    isOptionalNumber(value.errorCount) &&
-    isOptionalNumber(value.warningCount) &&
-    isOptionalNumber(value.fixableErrorCount) &&
-    isOptionalNumber(value.fixableWarningCount) &&
-    (value.messages === undefined || (Array.isArray(value.messages) && value.messages.every(isEslintJsonMessage)))
-  );
-}
-
-function isEslintJsonMessage(value: unknown): value is EslintJsonMessage {
-  return (
-    isRecord(value) &&
-    (value.ruleId === undefined || value.ruleId === null || typeof value.ruleId === "string") &&
-    isOptionalNumber(value.severity)
-  );
-}
-
 function isSeverity(value: unknown): value is RuleSummaryItem["severity"] {
   return value === "error" || value === "warning" || value === "unknown";
 }
 
 function isNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
-}
-
-function isOptionalNumber(value: unknown): boolean {
-  return value === undefined || isNumber(value);
-}
-
-function severityName(severity: number | undefined): RuleSummaryItem["severity"] {
-  if (severity === 2) {
-    return "error";
-  }
-  if (severity === 1) {
-    return "warning";
-  }
-  return "unknown";
-}
-
-function normalizeFilePath(filePath: string): string {
-  return filePath.split(path.sep).join("/");
 }
 
 function emptyEvidence(): LintEvidence {

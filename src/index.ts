@@ -12,7 +12,7 @@ import { writeArtifacts } from "./report/artifacts.js";
 import { assessRisk } from "./report/risk.js";
 
 const CHECKER_VERSION = "0.1.0";
-const SCHEMA_VERSION = "0.1.0";
+const SCHEMA_VERSION = "0.2.0";
 
 export async function runChecker({ cwd, options }: RunCheckerInput): Promise<CheckerReport> {
   const outputDirectory = options.output;
@@ -92,7 +92,8 @@ export async function runChecker({ cwd, options }: RunCheckerInput): Promise<Che
             warningCount: 0,
             fixableErrorCount: 0,
             fixableWarningCount: 0,
-            fileCount: 0
+            fileCount: 0,
+            problemFileCount: 0
           },
           ruleSummary: [],
           fileSummary: [],

@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { tmpdir } from "node:os";
 import { executeLint } from "../src/lint/execute.js";
-import { parseEslintJson, parseEslintSummary } from "../src/lint/parse.js";
+import { parseEslintSummary } from "../src/lint/parse.js";
 import { buildInstallCommand, diagnoseMissingDependency } from "../src/lint/recovery.js";
 import type { EslintAccess } from "../src/types.js";
 import { runCommand } from "../src/utils/commands.js";
@@ -293,32 +293,6 @@ describe("lint execution", () => {
     } finally {
       await rm(tempDirectory, { recursive: true, force: true });
     }
-  });
-
-  test("parses raw ESLint JSON for compatibility until summary flow is wired", async () => {
-    await expect(parseEslintJson("fixtures/lint-success/.eslint-checker/eslint-report.json")).resolves.toEqual({
-      lintResult: {
-        status: "success",
-        fileCount: 2,
-        problemFileCount: 2,
-        errorCount: 2,
-        warningCount: 1,
-        fixableErrorCount: 1,
-        fixableWarningCount: 1
-      },
-      ruleSummary: [
-        { ruleId: "no-unused-vars", severity: "error", count: 2, fixableCount: 1 },
-        { ruleId: "no-console", severity: "warning", count: 1, fixableCount: 1 }
-      ],
-      fileSummary: [
-        { filePath: "src/a.ts", errorCount: 1, warningCount: 1, disableCount: 0 },
-        { filePath: "src/b.ts", errorCount: 1, warningCount: 0, disableCount: 0 }
-      ],
-      lintEvidence: {
-        topRuleExamples: [],
-        topFileExamples: []
-      }
-    });
   });
 
   test("returns unavailable failure when ESLint summary is missing", async () => {

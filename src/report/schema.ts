@@ -1,5 +1,26 @@
 import { z } from "zod";
 
+const lintEvidenceExampleSchema = z.object({
+  ruleId: z.string(),
+  severity: z.union([z.literal("error"), z.literal("warning"), z.literal("unknown")]),
+  filePath: z.string(),
+  line: z.number(),
+  column: z.number(),
+  message: z.string()
+});
+
+const lintEvidenceSchema = z.object({
+  topRuleExamples: z.array(lintEvidenceExampleSchema),
+  topFileExamples: z.array(
+    z.object({
+      filePath: z.string(),
+      errorCount: z.number(),
+      warningCount: z.number(),
+      examples: z.array(lintEvidenceExampleSchema)
+    })
+  )
+});
+
 export const checkerReportSchema = z.object({
   schemaVersion: z.string(),
   checkerVersion: z.string(),
@@ -94,11 +115,12 @@ export const checkerReportSchema = z.object({
     warningCount: z.number(),
     fixableErrorCount: z.number(),
     fixableWarningCount: z.number(),
-    fileCount: z.number()
+    fileCount: z.number(),
+    problemFileCount: z.number()
   }),
   ruleSummary: z.array(z.unknown()),
   fileSummary: z.array(z.unknown()),
-  lintEvidence: z.unknown().optional(),
+  lintEvidence: lintEvidenceSchema,
   riskAssessment: z.object({
     level: z.string(),
     score: z.number(),

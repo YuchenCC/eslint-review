@@ -1,0 +1,14 @@
+{
+  "name": "vue-eslint-fixture",
+  "version": "1.0.0",
+  "scripts": {
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "vue": "^3.5.0"
+  },
+  "devDependencies": {
+    "eslint": "^9.0.0",
+    "eslint-plugin-vue": "^9.0.0"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "name": "react-partial-eslint-fixture",
+  "version": "1.0.0",
+  "dependencies": {
+    "react": "^18.3.0"
+  },
+  "devDependencies": {
+    "eslint": "^9.0.0"
+  }
+}

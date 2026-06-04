@@ -1,4 +1,6 @@
 import type { CheckerReport, RunCheckerInput } from "./types.js";
+import { detectEslintAccess } from "./discovery/eslintAccess.js";
+import { discoverProject } from "./discovery/project.js";
 
 const CHECKER_VERSION = "0.1.0";
 const SCHEMA_VERSION = "0.1.0";
@@ -6,6 +8,10 @@ const SCHEMA_VERSION = "0.1.0";
 export async function runChecker({ cwd, options }: RunCheckerInput): Promise<CheckerReport> {
   const outputDirectory = options.output;
   const timeoutSeconds = Number.parseInt(options.timeout, 10);
+  const [projectDiscovery, eslintAccess] = await Promise.all([
+    discoverProject(cwd),
+    detectEslintAccess(cwd)
+  ]);
 
   return {
     schemaVersion: SCHEMA_VERSION,
@@ -15,36 +21,22 @@ export async function runChecker({ cwd, options }: RunCheckerInput): Promise<Che
       system: options.system ?? "unknown",
       center: options.center ?? "unknown",
       owner: options.owner ?? "unknown",
-      nodeVersion: process.version,
-      packageManager: "unknown",
-      packageManagerVersion: "unknown",
+      nodeVersion: projectDiscovery.nodeVersion,
+      packageManager: projectDiscovery.packageManager,
+      packageManagerVersion: projectDiscovery.packageManagerVersion,
       cwd
     },
-    gitInfo: {
-      branch: "unknown",
-      commit: "unknown",
-      dirty: "unknown",
-      status: "not_collected"
-    },
+    gitInfo: projectDiscovery.gitInfo,
     projectInfo: {
-      hasPackageJson: false,
-      packageName: "unknown",
-      packageVersion: "unknown",
-      stack: "unknown",
-      dependencies: [],
-      devDependencies: [],
-      packageManagerLockfile: "unknown"
+      hasPackageJson: projectDiscovery.hasPackageJson,
+      packageName: projectDiscovery.packageName,
+      packageVersion: projectDiscovery.packageVersion,
+      stack: projectDiscovery.stack,
+      dependencies: projectDiscovery.dependencies,
+      devDependencies: projectDiscovery.devDependencies,
+      packageManagerLockfile: projectDiscovery.packageManagerLockfile
     },
-    eslintAccess: {
-      accessLevel: "not_connected",
-      eslintDependencyDetected: false,
-      eslintPackages: [],
-      eslintConfigDetected: false,
-      configFiles: [],
-      packageJsonEslintConfigDetected: false,
-      lintScriptDetected: false,
-      lintScripts: {}
-    },
+    eslintAccess,
     eslintConfigAnalysis: {
       status: "not_collected",
       analyzedFiles: [],

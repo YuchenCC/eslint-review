@@ -6,7 +6,7 @@ import { detectEslintAccess } from "./discovery/eslintAccess.js";
 import { discoverProject } from "./discovery/project.js";
 import { createLogger } from "./logger.js";
 import { executeLint } from "./lint/execute.js";
-import { parseEslintJson } from "./lint/parse.js";
+import { parseEslintSummary } from "./lint/parse.js";
 import { recoverAndRetry } from "./lint/recovery.js";
 import { writeArtifacts } from "./report/artifacts.js";
 import { assessRisk } from "./report/risk.js";
@@ -84,7 +84,7 @@ export async function runChecker({ cwd, options }: RunCheckerInput): Promise<Che
   logger.info("[5/7] Parsing ESLint output");
   const parsedLint =
     lintExecution.status === "success"
-      ? await parseEslintJson(`${cwd}/${outputDirectory}/eslint-report.json`)
+      ? await parseEslintSummary(`${cwd}/${outputDirectory}/eslint-summary.json`)
       : {
           lintResult: {
             status: "not_collected" as const,
@@ -95,7 +95,11 @@ export async function runChecker({ cwd, options }: RunCheckerInput): Promise<Che
             fileCount: 0
           },
           ruleSummary: [],
-          fileSummary: []
+          fileSummary: [],
+          lintEvidence: {
+            topRuleExamples: [],
+            topFileExamples: []
+          }
         };
 
   logger.info("[6/7] Assessing risk and composing report");
@@ -133,11 +137,13 @@ export async function runChecker({ cwd, options }: RunCheckerInput): Promise<Che
     lintResult: parsedLint.lintResult,
     ruleSummary: parsedLint.ruleSummary,
     fileSummary: parsedLint.fileSummary,
+    lintEvidence: parsedLint.lintEvidence,
     artifacts: {
       outputDirectory,
       reportJson: `${outputDirectory}/report.json`,
       summaryMarkdown: `${outputDirectory}/summary.md`,
-      eslintReportJson: `${outputDirectory}/eslint-report.json`,
+      eslintSummaryJson: `${outputDirectory}/eslint-summary.json`,
+      eslintReportJson: options.rawEslintReport ? `${outputDirectory}/eslint-report.json` : null,
       eslintConfigJson: `${outputDirectory}/eslint-config.json`,
       lintLog: `${outputDirectory}/lint-log.txt`
     }

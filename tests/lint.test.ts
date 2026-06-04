@@ -83,21 +83,22 @@ describe("lint execution", () => {
         })
       ).resolves.toMatchObject({
         status: "success",
-        command: "npx eslint . -f src/lint/summaryFormatter.js -o .eslint-checker/eslint-summary.json",
         exitCode: 1,
         durationMs: 25
       });
 
       expect(mockedRunCommand).toHaveBeenCalledTimes(1);
+      const summaryFormatterPath = mockedRunCommand.mock.calls[0]?.[0].args[3];
+      expect(path.isAbsolute(summaryFormatterPath ?? "")).toBe(true);
+      expect(normalizePath(summaryFormatterPath ?? "")).toMatch(/\/lint\/summaryFormatter\.js$/);
       expect(mockedRunCommand).toHaveBeenCalledWith({
         cwd: tempDirectory,
         command: "npx",
-        args: ["eslint", ".", "-f", "src/lint/summaryFormatter.js", "-o", ".eslint-checker/eslint-summary.json"],
+        args: ["eslint", ".", "-f", summaryFormatterPath, "-o", ".eslint-checker/eslint-summary.json"],
         timeoutMs: 10000
       });
-      expect(logger.commands).toEqual([
-        "npx eslint . -f src/lint/summaryFormatter.js -o .eslint-checker/eslint-summary.json"
-      ]);
+      expect(logger.commands).toHaveLength(1);
+      expect(normalizePath(logger.commands[0] ?? "")).toContain("/lint/summaryFormatter.js -o .eslint-checker/eslint-summary.json");
     } finally {
       await rm(tempDirectory, { recursive: true, force: true });
     }
@@ -136,21 +137,22 @@ describe("lint execution", () => {
         })
       ).resolves.toMatchObject({
         status: "success",
-        command: "npx eslint . -f src/lint/summaryFormatter.js -o .eslint-checker/eslint-summary.json",
         exitCode: 0,
         durationMs: 30
       });
 
+      const summaryFormatterPath = mockedRunCommand.mock.calls[0]?.[0].args[3];
+      expect(path.isAbsolute(summaryFormatterPath ?? "")).toBe(true);
+      expect(normalizePath(summaryFormatterPath ?? "")).toMatch(/\/lint\/summaryFormatter\.js$/);
       expect(mockedRunCommand).toHaveBeenNthCalledWith(2, {
         cwd: tempDirectory,
         command: "npx",
         args: ["eslint", ".", "-f", "json", "-o", ".eslint-checker/eslint-report.json"],
         timeoutMs: 10000
       });
-      expect(logger.commands).toEqual([
-        "npx eslint . -f src/lint/summaryFormatter.js -o .eslint-checker/eslint-summary.json",
-        "npx eslint . -f json -o .eslint-checker/eslint-report.json"
-      ]);
+      expect(logger.commands).toHaveLength(2);
+      expect(normalizePath(logger.commands[0] ?? "")).toContain("/lint/summaryFormatter.js -o .eslint-checker/eslint-summary.json");
+      expect(logger.commands[1]).toBe("npx eslint . -f json -o .eslint-checker/eslint-report.json");
       expect(logger.errors).toEqual(["raw formatter failed"]);
     } finally {
       await rm(tempDirectory, { recursive: true, force: true });
@@ -465,4 +467,8 @@ function memoryLogger() {
     command: (message: string) => commands.push(message),
     toText: () => ""
   };
+}
+
+function normalizePath(value: string): string {
+  return value.replaceAll("\\", "/");
 }

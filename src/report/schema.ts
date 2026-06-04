@@ -98,6 +98,7 @@ export const checkerReportSchema = z.object({
   }),
   ruleSummary: z.array(z.unknown()),
   fileSummary: z.array(z.unknown()),
+  lintEvidence: z.unknown().optional(),
   riskAssessment: z.object({
     level: z.string(),
     score: z.number(),
@@ -108,7 +109,8 @@ export const checkerReportSchema = z.object({
     outputDirectory: z.string(),
     reportJson: z.string(),
     summaryMarkdown: z.string(),
-    eslintReportJson: z.string(),
+    eslintSummaryJson: z.string(),
+    eslintReportJson: z.string().nullable(),
     eslintConfigJson: z.string(),
     lintLog: z.string()
   })

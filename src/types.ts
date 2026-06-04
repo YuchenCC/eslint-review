@@ -201,7 +201,8 @@ export interface Artifacts {
   outputDirectory: string;
   reportJson: string;
   summaryMarkdown: string;
-  eslintReportJson: string;
+  eslintSummaryJson: string;
+  eslintReportJson: string | null;
   eslintConfigJson: string;
   lintLog: string;
 }

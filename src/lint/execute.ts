@@ -1,9 +1,12 @@
 import { mkdir } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { createLogger, type Logger } from "../logger.js";
 import type { EslintAccess, LintExecution } from "../types.js";
 import { runCommand } from "../utils/commands.js";
 import { pathExists } from "../utils/fs.js";
+
+const SUMMARY_FORMATTER_PATH = fileURLToPath(new URL("./summaryFormatter.js", import.meta.url));
 
 export interface ExecuteLintInput {
   cwd: string;
@@ -36,8 +39,7 @@ export async function executeLint({
 
   await mkdir(path.join(cwd, outputDirectory), { recursive: true });
   const summaryPath = path.join(outputDirectory, "eslint-summary.json");
-  const formatterPath = path.join("src", "lint", "summaryFormatter.js");
-  const args = ["eslint", ".", "-f", formatterPath, "-o", summaryPath];
+  const args = ["eslint", ".", "-f", SUMMARY_FORMATTER_PATH, "-o", summaryPath];
   const commandText = `npx ${args.join(" ")}`;
   logger.command(commandText);
 

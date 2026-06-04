@@ -1,108 +1,79 @@
-import path from "node:path";
-import type { FileSummaryItem, LintResult, RuleSummaryItem } from "../types.js";
-import { readJsonFile } from "../utils/fs.js";
+import type { FileSummaryItem, LintEvidence, LintResult, RuleSummaryItem } from "../types.js";
+import { pathExists, readJsonFile } from "../utils/fs.js";
 
-interface EslintJsonFile {
-  filePath: string;
-  errorCount?: number;
-  warningCount?: number;
-  fixableErrorCount?: number;
-  fixableWarningCount?: number;
-  messages?: EslintJsonMessage[];
-}
-
-interface EslintJsonMessage {
-  ruleId?: string | null;
-  severity?: number;
-  fix?: unknown;
-  fatal?: boolean;
-}
-
-export interface ParsedEslintJson {
+export interface ParsedEslintSummary {
   lintResult: LintResult;
   ruleSummary: RuleSummaryItem[];
   fileSummary: FileSummaryItem[];
+  lintEvidence: LintEvidence;
 }
 
-export async function parseEslintJson(reportPath: string): Promise<ParsedEslintJson> {
-  const files = await readJsonFile<EslintJsonFile[]>(reportPath);
-  if (!Array.isArray(files)) {
-    return {
-      lintResult: {
-        status: "failed",
-        errorCount: 0,
-        warningCount: 0,
-        fixableErrorCount: 0,
-        fixableWarningCount: 0,
-        fileCount: 0,
-        failureReason: "eslint_json_unavailable"
-      },
-      ruleSummary: [],
-      fileSummary: []
-    };
+const EMPTY_EVIDENCE: LintEvidence = {
+  topRuleExamples: [],
+  topFileExamples: []
+};
+
+export async function parseEslintSummary(summaryPath: string): Promise<ParsedEslintSummary> {
+  if (!(await pathExists(summaryPath))) {
+    return failedSummary("eslint_summary_unavailable");
   }
 
-  const ruleCounts = new Map<string, RuleSummaryItem>();
-  let errorCount = 0;
-  let warningCount = 0;
-  let fixableErrorCount = 0;
-  let fixableWarningCount = 0;
-
-  const fileSummary = files.map((file) => {
-    const fileErrorCount = file.errorCount ?? 0;
-    const fileWarningCount = file.warningCount ?? 0;
-    errorCount += fileErrorCount;
-    warningCount += fileWarningCount;
-    fixableErrorCount += file.fixableErrorCount ?? 0;
-    fixableWarningCount += file.fixableWarningCount ?? 0;
-
-    for (const message of file.messages ?? []) {
-      const ruleId = message.ruleId ?? "fatal";
-      const existing = ruleCounts.get(ruleId) ?? {
-        ruleId,
-        severity: severityName(message.severity),
-        count: 0,
-        fixableCount: 0
-      };
-      existing.count += 1;
-      if (message.fix !== undefined) {
-        existing.fixableCount += 1;
-      }
-      ruleCounts.set(ruleId, existing);
-    }
-
-    return {
-      filePath: normalizeFilePath(file.filePath),
-      errorCount: fileErrorCount,
-      warningCount: fileWarningCount,
-      disableCount: 0
-    };
-  });
+  const summary = await readJsonFile<unknown>(summaryPath);
+  if (!isValidSummaryShape(summary)) {
+    return failedSummary("eslint_summary_invalid");
+  }
 
   return {
-    lintResult: {
-      status: "success",
-      errorCount,
-      warningCount,
-      fixableErrorCount,
-      fixableWarningCount,
-      fileCount: files.length
-    },
-    ruleSummary: [...ruleCounts.values()].sort((left, right) => right.count - left.count || left.ruleId.localeCompare(right.ruleId)),
-    fileSummary
+    lintResult: summary.lintResult,
+    ruleSummary: summary.ruleSummary,
+    fileSummary: summary.fileSummary,
+    lintEvidence: isLintEvidence(summary.evidence) ? summary.evidence : EMPTY_EVIDENCE
   };
 }
 
-function severityName(severity: number | undefined): RuleSummaryItem["severity"] {
-  if (severity === 2) {
-    return "error";
-  }
-  if (severity === 1) {
-    return "warning";
-  }
-  return "unknown";
+export type ParsedEslintJson = ParsedEslintSummary;
+
+export async function parseEslintJson(reportPath: string): Promise<ParsedEslintJson> {
+  return parseEslintSummary(reportPath);
 }
 
-function normalizeFilePath(filePath: string): string {
-  return filePath.split(path.sep).join("/");
+function failedSummary(failureReason: string): ParsedEslintSummary {
+  return {
+    lintResult: {
+      status: "failed",
+      errorCount: 0,
+      warningCount: 0,
+      fixableErrorCount: 0,
+      fixableWarningCount: 0,
+      fileCount: 0,
+      problemFileCount: 0,
+      failureReason
+    },
+    ruleSummary: [],
+    fileSummary: [],
+    lintEvidence: EMPTY_EVIDENCE
+  };
+}
+
+function isValidSummaryShape(value: unknown): value is {
+  lintResult: LintResult;
+  ruleSummary: RuleSummaryItem[];
+  fileSummary: FileSummaryItem[];
+  evidence?: unknown;
+} {
+  return (
+    isRecord(value) &&
+    isRecord(value.lintResult) &&
+    Array.isArray(value.ruleSummary) &&
+    Array.isArray(value.fileSummary) &&
+    (value.evidence === undefined || isLintEvidence(value.evidence))
+  );
+}
+
+function isLintEvidence(value: unknown): value is LintEvidence {
+  return isRecord(value) && Array.isArray(value.topRuleExamples) && Array.isArray(value.topFileExamples);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

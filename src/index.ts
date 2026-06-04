@@ -1,9 +1,11 @@
-import type { CheckerReport, RunCheckerInput } from "./types.js";
+import type { CheckerReport, LintRecovery, RunCheckerInput } from "./types.js";
 import { analyzeEslintConfig } from "./analysis/configAnalysis.js";
 import { scanEslintDisable } from "./analysis/disableScan.js";
 import { detectEslintAccess } from "./discovery/eslintAccess.js";
 import { discoverProject } from "./discovery/project.js";
+import { createLogger } from "./logger.js";
 import { executeLint } from "./lint/execute.js";
+import { recoverAndRetry } from "./lint/recovery.js";
 
 const CHECKER_VERSION = "0.1.0";
 const SCHEMA_VERSION = "0.1.0";
@@ -18,7 +20,17 @@ export async function runChecker({ cwd, options }: RunCheckerInput): Promise<Che
     scanEslintDisable(cwd)
   ]);
   const normalizedTimeoutSeconds = Number.isNaN(timeoutSeconds) ? 120 : timeoutSeconds;
-  const lintExecution =
+  const logger = createLogger();
+  let lintRecovery: LintRecovery = {
+    enabled: options.recovery,
+    attempted: false,
+    status: "not_collected" as const,
+    retryCount: 0,
+    installedPackages: [],
+    installCommand: "",
+    modifiedFiles: []
+  };
+  let lintExecution =
     options.mode === "access"
       ? {
           status: "skipped" as const,
@@ -32,8 +44,23 @@ export async function runChecker({ cwd, options }: RunCheckerInput): Promise<Che
           cwd,
           outputDirectory,
           timeoutSeconds: normalizedTimeoutSeconds,
-          eslintAccess
+          eslintAccess,
+          logger
         });
+
+  if (options.recovery && lintExecution.status === "failed") {
+    const recovered = await recoverAndRetry({
+      cwd,
+      outputDirectory,
+      timeoutSeconds: normalizedTimeoutSeconds,
+      eslintAccess,
+      packageManager: projectDiscovery.packageManager,
+      failedExecution: lintExecution,
+      logger
+    });
+    lintExecution = recovered.lintExecution;
+    lintRecovery = recovered.lintRecovery;
+  }
 
   return {
     schemaVersion: SCHEMA_VERSION,
@@ -64,15 +91,7 @@ export async function runChecker({ cwd, options }: RunCheckerInput): Promise<Che
     lintExecution: {
       ...lintExecution
     },
-    lintRecovery: {
-      enabled: options.recovery,
-      attempted: false,
-      status: "not_collected",
-      retryCount: 0,
-      installedPackages: [],
-      installCommand: "",
-      modifiedFiles: []
-    },
+    lintRecovery,
     lintResult: {
       status: "not_collected",
       errorCount: 0,

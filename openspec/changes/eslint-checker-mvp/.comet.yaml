@@ -1,5 +1,5 @@
 workflow: full
-phase: verify
+phase: archive
 build_mode: subagent-driven-development
 build_pause: null
 isolation: branch
@@ -7,11 +7,11 @@ verify_mode: full
 base_ref: null
 design_doc: docs/superpowers/specs/2026-06-03-eslint-checker-mvp-design.md
 plan: docs/superpowers/plans/2026-06-03-eslint-checker-mvp.md
-verify_result: pending
+verify_result: pass
 verification_report: docs/superpowers/reports/2026-06-04-eslint-checker-mvp-verify.md
-branch_status: pending
+branch_status: handled
 created_at: 2026-06-03
-verified_at: null
+verified_at: 2026-06-04
 archived: false
 handoff_context: openspec/changes/eslint-checker-mvp/.comet/handoff/design-context.json
 handoff_hash: e5c1ee3a52e4cd97723bc5aa461637487a2e1414039a6d2b40c289ec700df91c

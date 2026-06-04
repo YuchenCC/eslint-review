@@ -11,6 +11,6 @@
 - [x] Implement ESLint JSON parsing into lint result, rule summary, and file summary.
 - [x] Implement stable `report.json` schema and development-readable `summary.md`.
 - [x] Implement `lint-log.txt` logging for commands, output, recovery, retries, and failures.
-- [ ] Implement iflycode Skill workflow for installing/running `@sunny/eslint-checker`, waiting for report output, and generating the formal report.
-- [ ] Add tests or fixtures for no ESLint, partial ESLint, missing plugin/parser/config, config-disabled rules, disable-heavy `src`, and successful lint execution.
-- [ ] Write README usage examples for direct CLI usage and iflycode Skill usage.
+- [x] Implement iflycode Skill workflow for installing/running `@sunny/eslint-checker`, waiting for report output, and generating the formal report.
+- [x] Add tests or fixtures for no ESLint, partial ESLint, missing plugin/parser/config, config-disabled rules, disable-heavy `src`, and successful lint execution.
+- [x] Write README usage examples for direct CLI usage and iflycode Skill usage.

@@ -1,5 +1,6 @@
 import type { CheckerReport, RunCheckerInput } from "./types.js";
 import { analyzeEslintConfig } from "./analysis/configAnalysis.js";
+import { scanEslintDisable } from "./analysis/disableScan.js";
 import { detectEslintAccess } from "./discovery/eslintAccess.js";
 import { discoverProject } from "./discovery/project.js";
 
@@ -9,10 +10,11 @@ const SCHEMA_VERSION = "0.1.0";
 export async function runChecker({ cwd, options }: RunCheckerInput): Promise<CheckerReport> {
   const outputDirectory = options.output;
   const timeoutSeconds = Number.parseInt(options.timeout, 10);
-  const [projectDiscovery, eslintAccess, eslintConfigAnalysis] = await Promise.all([
+  const [projectDiscovery, eslintAccess, eslintConfigAnalysis, eslintDisableAnalysis] = await Promise.all([
     discoverProject(cwd),
     detectEslintAccess(cwd),
-    analyzeEslintConfig(cwd)
+    analyzeEslintConfig(cwd),
+    scanEslintDisable(cwd)
   ]);
 
   return {
@@ -40,16 +42,7 @@ export async function runChecker({ cwd, options }: RunCheckerInput): Promise<Che
     },
     eslintAccess,
     eslintConfigAnalysis,
-    eslintDisableAnalysis: {
-      status: "not_collected",
-      scannedDirectory: "src",
-      totalDisableCount: 0,
-      fileLevelDisableCount: 0,
-      disableWithoutRuleCount: 0,
-      broadDisableCount: 0,
-      topFiles: [],
-      findings: []
-    },
+    eslintDisableAnalysis,
     lintExecution: {
       status: "skipped",
       command: "",

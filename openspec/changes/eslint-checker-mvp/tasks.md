@@ -5,7 +5,7 @@
 - [x] Implement technology stack detection for Vue, React, Umi, Next, Vite, Webpack, and unknown projects.
 - [x] Implement ESLint access detection for dependencies, config files, `package.json eslintConfig`, and lint scripts.
 - [x] Implement ESLint config quality analysis for disabled common format, quality, and stack-specific rules.
-- [ ] Implement `src`-only `eslint-disable` scanning and risk summary.
+- [x] Implement `src`-only `eslint-disable` scanning and risk summary.
 - [ ] Implement safe ESLint JSON execution with timeout and artifact logging.
 - [ ] Implement lint recovery for missing shared configs, plugins, and parsers, including controlled dev dependency installation and bounded retry.
 - [ ] Implement ESLint JSON parsing into lint result, rule summary, and file summary.

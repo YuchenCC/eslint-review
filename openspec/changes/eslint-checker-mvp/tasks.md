@@ -2,7 +2,7 @@
 
 - [x] Initialize the `@sunny/eslint-checker` Node CLI package and expose the `eslint-checker` command.
 - [x] Implement project root validation and baseline project, Git, Node, and package manager discovery.
-- [ ] Implement technology stack detection for Vue, React, Umi, Next, Vite, Webpack, and unknown projects.
+- [x] Implement technology stack detection for Vue, React, Umi, Next, Vite, Webpack, and unknown projects.
 - [ ] Implement ESLint access detection for dependencies, config files, `package.json eslintConfig`, and lint scripts.
 - [ ] Implement ESLint config quality analysis for disabled common format, quality, and stack-specific rules.
 - [ ] Implement `src`-only `eslint-disable` scanning and risk summary.

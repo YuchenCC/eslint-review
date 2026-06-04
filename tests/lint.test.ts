@@ -3,7 +3,7 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { tmpdir } from "node:os";
 import { executeLint } from "../src/lint/execute.js";
-import { parseEslintSummary } from "../src/lint/parse.js";
+import { parseEslintJson, parseEslintSummary } from "../src/lint/parse.js";
 import { buildInstallCommand, diagnoseMissingDependency } from "../src/lint/recovery.js";
 import type { EslintAccess } from "../src/types.js";
 
@@ -54,12 +54,71 @@ describe("lint execution", () => {
 
   test("parses ESLint summary into lint, file, rule, and evidence summaries", async () => {
     const tempDirectory = await mkdtemp(path.join(tmpdir(), "eslint-summary-"));
-    const summaryPath = path.join(tempDirectory, "eslint-summary.json");
-    await writeFile(
-      summaryPath,
-      JSON.stringify({
-        schemaVersion: "0.1.0",
-        generatedAt: "2026-06-04T00:00:00.000Z",
+    try {
+      const summaryPath = path.join(tempDirectory, "eslint-summary.json");
+      await writeFile(
+        summaryPath,
+        JSON.stringify({
+          schemaVersion: "0.1.0",
+          generatedAt: "2026-06-04T00:00:00.000Z",
+          lintResult: {
+            status: "success",
+            fileCount: 2,
+            problemFileCount: 2,
+            errorCount: 2,
+            warningCount: 1,
+            fixableErrorCount: 1,
+            fixableWarningCount: 1
+          },
+          ruleSummary: [
+            { ruleId: "no-unused-vars", severity: "error", count: 2, fixableCount: 1 },
+            { ruleId: "no-console", severity: "warning", count: 1, fixableCount: 1 }
+          ],
+          fileSummary: [
+            { filePath: "src/a.ts", errorCount: 1, warningCount: 1, disableCount: 0 },
+            { filePath: "src/b.ts", errorCount: 1, warningCount: 0, disableCount: 0 }
+          ],
+          evidence: {
+            topRuleExamples: [
+              {
+                ruleId: "no-unused-vars",
+                severity: "error",
+                filePath: "src/a.ts",
+                line: 10,
+                column: 5,
+                message: "'value' is assigned a value but never used."
+              }
+            ],
+            topFileExamples: [
+              {
+                filePath: "src/a.ts",
+                errorCount: 1,
+                warningCount: 1,
+                examples: [
+                  {
+                    ruleId: "no-unused-vars",
+                    severity: "error",
+                    filePath: "src/a.ts",
+                    line: 10,
+                    column: 5,
+                    message: "'value' is assigned a value but never used."
+                  }
+                ]
+              }
+            ]
+          },
+          limits: {
+            maxRules: 20,
+            maxFiles: 20,
+            maxExamplesPerRule: 3,
+            maxExamplesPerFile: 3,
+            maxMessageLength: 200
+          }
+        }),
+        "utf8"
+      );
+
+      await expect(parseEslintSummary(summaryPath)).resolves.toEqual({
         lintResult: {
           status: "success",
           fileCount: 2,
@@ -77,7 +136,7 @@ describe("lint execution", () => {
           { filePath: "src/a.ts", errorCount: 1, warningCount: 1, disableCount: 0 },
           { filePath: "src/b.ts", errorCount: 1, warningCount: 0, disableCount: 0 }
         ],
-        evidence: {
+        lintEvidence: {
           topRuleExamples: [
             {
               ruleId: "no-unused-vars",
@@ -105,19 +164,15 @@ describe("lint execution", () => {
               ]
             }
           ]
-        },
-        limits: {
-          maxRules: 20,
-          maxFiles: 20,
-          maxExamplesPerRule: 3,
-          maxExamplesPerFile: 3,
-          maxMessageLength: 200
         }
-      }),
-      "utf8"
-    );
+      });
+    } finally {
+      await rm(tempDirectory, { recursive: true, force: true });
+    }
+  });
 
-    await expect(parseEslintSummary(summaryPath)).resolves.toEqual({
+  test("parses raw ESLint JSON for compatibility until summary flow is wired", async () => {
+    await expect(parseEslintJson("fixtures/lint-success/.eslint-checker/eslint-report.json")).resolves.toEqual({
       lintResult: {
         status: "success",
         fileCount: 2,
@@ -136,37 +191,10 @@ describe("lint execution", () => {
         { filePath: "src/b.ts", errorCount: 1, warningCount: 0, disableCount: 0 }
       ],
       lintEvidence: {
-        topRuleExamples: [
-          {
-            ruleId: "no-unused-vars",
-            severity: "error",
-            filePath: "src/a.ts",
-            line: 10,
-            column: 5,
-            message: "'value' is assigned a value but never used."
-          }
-        ],
-        topFileExamples: [
-          {
-            filePath: "src/a.ts",
-            errorCount: 1,
-            warningCount: 1,
-            examples: [
-              {
-                ruleId: "no-unused-vars",
-                severity: "error",
-                filePath: "src/a.ts",
-                line: 10,
-                column: 5,
-                message: "'value' is assigned a value but never used."
-              }
-            ]
-          }
-        ]
+        topRuleExamples: [],
+        topFileExamples: []
       }
     });
-
-    await rm(tempDirectory, { recursive: true, force: true });
   });
 
   test("returns unavailable failure when ESLint summary is missing", async () => {
@@ -192,43 +220,112 @@ describe("lint execution", () => {
 
   test("returns invalid failure when ESLint summary is malformed", async () => {
     const tempDirectory = await mkdtemp(path.join(tmpdir(), "eslint-summary-invalid-"));
-    const summaryPath = path.join(tempDirectory, "eslint-summary.json");
-    const invalidJsonPath = path.join(tempDirectory, "invalid-json-summary.json");
-    await writeFile(summaryPath, JSON.stringify({ lintResult: {}, ruleSummary: [] }), "utf8");
-    await writeFile(invalidJsonPath, "{", "utf8");
+    try {
+      const summaryPath = path.join(tempDirectory, "eslint-summary.json");
+      const invalidJsonPath = path.join(tempDirectory, "invalid-json-summary.json");
+      const invalidRuleSummaryPath = path.join(tempDirectory, "invalid-rule-summary.json");
+      await writeFile(summaryPath, JSON.stringify({ lintResult: {}, ruleSummary: [] }), "utf8");
+      await writeFile(invalidJsonPath, "{", "utf8");
+      await writeFile(
+        invalidRuleSummaryPath,
+        JSON.stringify({
+          lintResult: {
+            status: "success",
+            errorCount: 0,
+            warningCount: 0,
+            fixableErrorCount: 0,
+            fixableWarningCount: 0,
+            fileCount: 1,
+            problemFileCount: 0
+          },
+          ruleSummary: [{ ruleId: "no-alert", severity: "error", count: "1", fixableCount: 0 }],
+          fileSummary: [{ filePath: "src/a.ts", errorCount: 0, warningCount: 0, disableCount: 0 }]
+        }),
+        "utf8"
+      );
 
-    await expect(parseEslintSummary(summaryPath)).resolves.toEqual({
-      lintResult: {
-        status: "failed",
-        errorCount: 0,
-        warningCount: 0,
-        fixableErrorCount: 0,
-        fixableWarningCount: 0,
-        fileCount: 0,
-        problemFileCount: 0,
-        failureReason: "eslint_summary_invalid"
-      },
-      ruleSummary: [],
-      fileSummary: [],
-      lintEvidence: {
+      await expect(parseEslintSummary(summaryPath)).resolves.toEqual({
+        lintResult: {
+          status: "failed",
+          errorCount: 0,
+          warningCount: 0,
+          fixableErrorCount: 0,
+          fixableWarningCount: 0,
+          fileCount: 0,
+          problemFileCount: 0,
+          failureReason: "eslint_summary_invalid"
+        },
+        ruleSummary: [],
+        fileSummary: [],
+        lintEvidence: {
+          topRuleExamples: [],
+          topFileExamples: []
+        }
+      });
+      await expect(parseEslintSummary(invalidJsonPath)).resolves.toMatchObject({
+        lintResult: {
+          status: "failed",
+          failureReason: "eslint_summary_invalid",
+          problemFileCount: 0
+        },
+        ruleSummary: [],
+        fileSummary: [],
+        lintEvidence: {
+          topRuleExamples: [],
+          topFileExamples: []
+        }
+      });
+      await expect(parseEslintSummary(invalidRuleSummaryPath)).resolves.toMatchObject({
+        lintResult: {
+          status: "failed",
+          failureReason: "eslint_summary_invalid",
+          problemFileCount: 0
+        }
+      });
+    } finally {
+      await rm(tempDirectory, { recursive: true, force: true });
+    }
+  });
+
+  test("returns distinct empty evidence objects for failures and evidence fallback", async () => {
+    const tempDirectory = await mkdtemp(path.join(tmpdir(), "eslint-summary-empty-evidence-"));
+    try {
+      const summaryPath = path.join(tempDirectory, "eslint-summary.json");
+      await writeFile(
+        summaryPath,
+        JSON.stringify({
+          lintResult: {
+            status: "success",
+            errorCount: 0,
+            warningCount: 0,
+            fixableErrorCount: 0,
+            fixableWarningCount: 0,
+            fileCount: 1,
+            problemFileCount: 0
+          },
+          ruleSummary: [],
+          fileSummary: [{ filePath: "src/a.ts", errorCount: 0, warningCount: 0, disableCount: 0 }]
+        }),
+        "utf8"
+      );
+
+      const missing = await parseEslintSummary(path.join(tempDirectory, "missing.json"));
+      const validWithoutEvidence = await parseEslintSummary(summaryPath);
+      missing.lintEvidence.topRuleExamples.push({
+        ruleId: "mutated",
+        severity: "error",
+        filePath: "src/a.ts",
+        line: 1,
+        column: 1,
+        message: "mutated"
+      });
+
+      expect(validWithoutEvidence.lintEvidence).toEqual({
         topRuleExamples: [],
         topFileExamples: []
-      }
-    });
-    await expect(parseEslintSummary(invalidJsonPath)).resolves.toMatchObject({
-      lintResult: {
-        status: "failed",
-        failureReason: "eslint_summary_invalid",
-        problemFileCount: 0
-      },
-      ruleSummary: [],
-      fileSummary: [],
-      lintEvidence: {
-        topRuleExamples: [],
-        topFileExamples: []
-      }
-    });
-
-    await rm(tempDirectory, { recursive: true, force: true });
+      });
+    } finally {
+      await rm(tempDirectory, { recursive: true, force: true });
+    }
   });
 });

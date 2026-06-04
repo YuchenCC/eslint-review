@@ -5,6 +5,7 @@ import { detectEslintAccess } from "./discovery/eslintAccess.js";
 import { discoverProject } from "./discovery/project.js";
 import { createLogger } from "./logger.js";
 import { executeLint } from "./lint/execute.js";
+import { parseEslintJson } from "./lint/parse.js";
 import { recoverAndRetry } from "./lint/recovery.js";
 
 const CHECKER_VERSION = "0.1.0";
@@ -61,6 +62,21 @@ export async function runChecker({ cwd, options }: RunCheckerInput): Promise<Che
     lintExecution = recovered.lintExecution;
     lintRecovery = recovered.lintRecovery;
   }
+  const parsedLint =
+    lintExecution.status === "success"
+      ? await parseEslintJson(`${cwd}/${outputDirectory}/eslint-report.json`)
+      : {
+          lintResult: {
+            status: "not_collected" as const,
+            errorCount: 0,
+            warningCount: 0,
+            fixableErrorCount: 0,
+            fixableWarningCount: 0,
+            fileCount: 0
+          },
+          ruleSummary: [],
+          fileSummary: []
+        };
 
   return {
     schemaVersion: SCHEMA_VERSION,
@@ -92,16 +108,9 @@ export async function runChecker({ cwd, options }: RunCheckerInput): Promise<Che
       ...lintExecution
     },
     lintRecovery,
-    lintResult: {
-      status: "not_collected",
-      errorCount: 0,
-      warningCount: 0,
-      fixableErrorCount: 0,
-      fixableWarningCount: 0,
-      fileCount: 0
-    },
-    ruleSummary: [],
-    fileSummary: [],
+    lintResult: parsedLint.lintResult,
+    ruleSummary: parsedLint.ruleSummary,
+    fileSummary: parsedLint.fileSummary,
     riskAssessment: {
       level: "unknown",
       score: 0,

@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { executeLint } from "../src/lint/execute.js";
+import { parseEslintJson } from "../src/lint/parse.js";
 import { buildInstallCommand, diagnoseMissingDependency } from "../src/lint/recovery.js";
 import type { EslintAccess } from "../src/types.js";
 
@@ -45,6 +46,27 @@ describe("lint execution", () => {
       command: "pnpm",
       args: ["add", "-D", "eslint-plugin-vue"],
       text: "pnpm add -D eslint-plugin-vue"
+    });
+  });
+
+  test("parses ESLint JSON into lint and file summaries", async () => {
+    await expect(parseEslintJson("fixtures/lint-success/.eslint-checker/eslint-report.json")).resolves.toMatchObject({
+      lintResult: {
+        status: "success",
+        fileCount: 2,
+        errorCount: 2,
+        warningCount: 1,
+        fixableErrorCount: 1,
+        fixableWarningCount: 1
+      },
+      ruleSummary: [
+        { ruleId: "no-unused-vars", severity: "error", count: 2, fixableCount: 1 },
+        { ruleId: "no-console", severity: "warning", count: 1, fixableCount: 1 }
+      ],
+      fileSummary: [
+        { filePath: "src/a.ts", errorCount: 1, warningCount: 1 },
+        { filePath: "src/b.ts", errorCount: 1, warningCount: 0 }
+      ]
     });
   });
 });

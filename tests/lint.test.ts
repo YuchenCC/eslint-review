@@ -138,7 +138,8 @@ describe("lint execution", () => {
       ).resolves.toMatchObject({
         status: "success",
         exitCode: 0,
-        durationMs: 30
+        durationMs: 30,
+        rawEslintReportGenerated: false
       });
 
       const summaryFormatterPath = mockedRunCommand.mock.calls[0]?.[0].args[3];
@@ -154,6 +155,42 @@ describe("lint execution", () => {
       expect(normalizePath(logger.commands[0] ?? "")).toContain("/lint/summaryFormatter.js -o .eslint-checker/eslint-summary.json");
       expect(logger.commands[1]).toBe("npx eslint . -f json -o .eslint-checker/eslint-report.json");
       expect(logger.errors).toEqual(["raw formatter failed"]);
+    } finally {
+      await rm(tempDirectory, { recursive: true, force: true });
+    }
+  });
+
+  test("treats missing summary after ESLint success as a parsing failure", async () => {
+    const tempDirectory = await mkdtemp(path.join(tmpdir(), "eslint-execute-missing-summary-"));
+    try {
+      mockedRunCommand.mockResolvedValueOnce({
+        exitCode: 0,
+        stdout: "",
+        stderr: "",
+        durationMs: 20,
+        timedOut: false
+      });
+
+      const logger = memoryLogger();
+      await expect(
+        executeLint({
+          cwd: tempDirectory,
+          outputDirectory: ".eslint-checker",
+          timeoutSeconds: 10,
+          eslintAccess: connectedEslintAccess,
+          logger
+        })
+      ).resolves.toMatchObject({
+        status: "success",
+        exitCode: 0
+      });
+      await expect(parseEslintSummary(path.join(tempDirectory, ".eslint-checker/eslint-summary.json"))).resolves.toMatchObject({
+        lintResult: {
+          status: "failed",
+          failureReason: "eslint_summary_unavailable"
+        }
+      });
+      expect(logger.errors).toEqual(["ESLint completed but summary output was not generated"]);
     } finally {
       await rm(tempDirectory, { recursive: true, force: true });
     }

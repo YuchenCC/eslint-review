@@ -99,6 +99,7 @@ export interface LintExecution {
   timeoutSeconds: number;
   exitCode: number | null;
   durationMs: number | null;
+  rawEslintReportGenerated?: boolean;
   skippedReason?: string;
   failureReason?: string;
 }

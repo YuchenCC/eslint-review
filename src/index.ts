@@ -144,7 +144,7 @@ export async function runChecker({ cwd, options }: RunCheckerInput): Promise<Che
       reportJson: `${outputDirectory}/report.json`,
       summaryMarkdown: `${outputDirectory}/summary.md`,
       eslintSummaryJson: `${outputDirectory}/eslint-summary.json`,
-      eslintReportJson: options.rawEslintReport ? `${outputDirectory}/eslint-report.json` : null,
+      eslintReportJson: lintExecution.rawEslintReportGenerated ? `${outputDirectory}/eslint-report.json` : null,
       eslintConfigJson: `${outputDirectory}/eslint-config.json`,
       lintLog: `${outputDirectory}/lint-log.txt`
     }

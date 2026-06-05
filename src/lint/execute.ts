@@ -63,17 +63,22 @@ export async function executeLint({
     };
   }
 
-  if ((result.exitCode === 0 || result.exitCode === 1) && summaryExists) {
-    logger.info("ESLint summary execution completed");
-    if (rawEslintReport) {
-      await emitRawEslintReport({ cwd, outputDirectory, timeoutSeconds, logger });
+  if (result.exitCode === 0 || result.exitCode === 1) {
+    if (summaryExists) {
+      logger.info("ESLint summary execution completed");
+    } else {
+      logger.error("ESLint completed but summary output was not generated");
     }
+    const rawEslintReportGenerated = rawEslintReport
+      ? await emitRawEslintReport({ cwd, outputDirectory, timeoutSeconds, logger })
+      : false;
     return {
       status: "success",
       command: commandText,
       timeoutSeconds,
       exitCode: result.exitCode,
-      durationMs: result.durationMs
+      durationMs: result.durationMs,
+      rawEslintReportGenerated
     };
   }
 
@@ -99,7 +104,7 @@ async function emitRawEslintReport({
   outputDirectory: string;
   timeoutSeconds: number;
   logger: Logger;
-}): Promise<void> {
+}): Promise<boolean> {
   const reportPath = path.join(outputDirectory, "eslint-report.json");
   const args = ["eslint", ".", "-f", "json", "-o", reportPath];
   const commandText = `npx ${args.join(" ")}`;
@@ -114,10 +119,13 @@ async function emitRawEslintReport({
 
   if (result.timedOut) {
     logger.error(`Raw ESLint JSON execution timed out after ${timeoutSeconds}s`);
-    return;
+    return false;
   }
 
   if (result.exitCode !== 0 && result.exitCode !== 1) {
     logger.error(result.stderr || result.stdout || "raw_eslint_report_failed");
+    return false;
   }
+
+  return pathExists(path.join(cwd, reportPath));
 }

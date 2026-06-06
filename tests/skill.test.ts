@@ -39,4 +39,29 @@ describe("iflycode report skill template", () => {
     expect(skill).toContain("逐项通过交互式输入引导用户填写");
     expect(skill).toContain("用户提供的值必须同时写入 key data 和 Markdown report");
   });
+
+  test("requires Chinese presentation for non-technical report text", async () => {
+    const skill = await readFile(skillPath, "utf8");
+
+    expect(skill).toContain("## Report Localization Rules");
+    expect(skill).toContain("报告展示层必须将 `report.json` 中的英文枚举、原因和建议转换为中文表达");
+    expect(skill).toContain("`partial` -> `部分接入`");
+    expect(skill).toContain("`success` -> `成功`");
+    expect(skill).toContain("`low` -> `低`");
+    expect(skill).toContain("`ESLint access is partial` -> `ESLint 接入不完整`");
+    expect(skill).toContain("`Complete ESLint config and lint script setup` -> `补齐 ESLint config 与 lint script 配置`");
+    expect(skill).toContain("`Delete <code>` -> `删除 <code>`");
+    expect(skill).toContain("`Replace <from> with <to>` -> `将 <from> 替换为 <to>`");
+    expect(skill).toContain("允许保留英文的内容仅限");
+  });
+
+  test("requires removing existing checker output before every run", async () => {
+    const skill = await readFile(skillPath, "utf8");
+
+    expect(skill).toContain("## Clean Previous Output");
+    expect(skill).toContain("每次运行 checker 前，必须先检查业务工程根目录下是否存在 `.eslint-checker`");
+    expect(skill).toContain("若存在，必须删除整个 `.eslint-checker` 目录");
+    expect(skill).toContain("不得复用旧的 `.eslint-checker/report.json` 或旧报告产物");
+    expect(skill).toContain("Remove-Item .eslint-checker -Recurse -Force");
+  });
 });

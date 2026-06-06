@@ -13,6 +13,8 @@ All report-facing non-technical prose should be Chinese. Technical terms and key
 
 Machine-oriented English values from `report.json` must not be copied directly into the Markdown report when they are explanatory text, statuses, risk reasons, or recommendations. The presentation layer must translate those values into Chinese while preserving the original technical evidence where needed.
 
+Report-facing check time must be shown in Beijing time, `UTC+8` / `Asia/Shanghai`. If `report.json.generatedAt` is an UTC timestamp, convert it before writing the Markdown report.
+
 ## Output Artifacts
 
 ### Clean Run Requirement
@@ -107,6 +109,12 @@ Minimum mapping:
 Table headers and narrative labels must also be Chinese. Technical identifiers such as `prettier/prettier`, `src/api/index.js`, `.eslint-checker/report.json`, `npx eslint .`, and key-data field paths may remain English.
 
 `lintEvidence.message` may keep code fragments, quoted strings, paths, and rule IDs, but its explanatory words must be localized. For example, `Delete <code>` becomes `删除 <code>`, and `Replace <from> with <to>` becomes `将 <from> 替换为 <to>`.
+
+## Report Time Rules
+
+The Markdown report cover must display check time in Beijing time. Recommended format: `YYYY-MM-DD HH:mm:ss 北京时间`.
+
+The key-data artifact may preserve the original `generatedAt` from `report.json`, but should also include a Beijing-time display value such as `generatedAtBeijing` when available. The workflow must not directly show UTC ISO strings such as `2026-06-06T05:48:59.389Z` as the final report check time.
 
 ## Unknown Field Completion
 

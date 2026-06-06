@@ -105,6 +105,17 @@ Minimum translation map:
 
 `lintEvidence.message` 来自 ESLint formatter，属于技术证据。可以保留 ruleId、代码片段和路径，但其中的说明性英文也必须中文化，例如将 `warning` 展示为 `警告`，将 `line` / `column` 展示为 `行` / `列`，将 `Delete \`x\`` 展示为 `删除 \`x\``，将 `Replace \`a\` with \`b\`` 展示为 `将 \`a\` 替换为 \`b\``。
 
+## Report Time Rules
+
+检查时间在 Markdown report 中必须使用北京时间，即 `UTC+8` / `Asia/Shanghai`。如果 `report.json` 中是 UTC 时间，展示前必须转换为北京时间。
+
+Rules:
+
+- Markdown report 的封面 `检查时间` 使用北京时间展示，推荐格式：`YYYY-MM-DD HH:mm:ss 北京时间`。
+- key data 中可以保留 `generatedAt` 原始值，同时建议增加 `generatedAtBeijing` 或等价展示字段用于汇总展示。
+- 不得直接把 `2026-06-06T05:48:59.389Z` 这类 UTC ISO string 作为 Markdown report 的检查时间展示值。
+- 如果 `report.json.generatedAt` 缺失，先按 Unknown Field Completion 询问用户；用户提供时间时，也必须按北京时间口径写入报告。
+
 ## Unknown Field Completion
 
 在生成 `.eslint-checker/iflycode-key-data.json` 和 `.eslint-checker/iflycode-eslint-governance-report.md` 前，必须先识别会输出为 `unknown` 的字段，并逐项通过交互式输入引导用户填写。

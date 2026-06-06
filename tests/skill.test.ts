@@ -64,4 +64,14 @@ describe("iflycode report skill template", () => {
     expect(skill).toContain("不得复用旧的 `.eslint-checker/report.json` 或旧报告产物");
     expect(skill).toContain("Remove-Item .eslint-checker -Recurse -Force");
   });
+
+  test("requires Beijing time for displayed report check time", async () => {
+    const skill = await readFile(skillPath, "utf8");
+
+    expect(skill).toContain("## Report Time Rules");
+    expect(skill).toContain("检查时间在 Markdown report 中必须使用北京时间");
+    expect(skill).toContain("UTC+8");
+    expect(skill).toContain("Asia/Shanghai");
+    expect(skill).toContain("如果 `report.json` 中是 UTC 时间，展示前必须转换为北京时间");
+  });
 });

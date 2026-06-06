@@ -1,0 +1,4 @@
+name: refine-eslint-report-template
+workflow: full
+phase: open
+open_result: pending

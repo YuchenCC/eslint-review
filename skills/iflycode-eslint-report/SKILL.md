@@ -1,50 +1,232 @@
 ---
 name: iflycode-eslint-report
-description: Run @sunny/eslint-checker in a business project and generate a formal ESLint governance report from report.json only.
+description: Run @sunny/eslint-checker in a business project and generate a formal ESLint governance Markdown report and aggregation data from report.json only.
 ---
 
 # iflycode ESLint Report
 
-Use this workflow when asked to produce an ESLint governance report for a JavaScript or TypeScript project.
+当需要为 JavaScript 或 TypeScript 工程产出 ESLint 治理检查报告时，使用此 workflow。
 
 ## Inputs
 
-- Business project root. If not provided, ask for the path before running commands.
-- Optional report metadata: system, center, owner.
+- 业务工程根目录。若用户未提供，先询问路径。
+- 可选报告元数据：system、center、owner。
 
 ## Run Checker
 
-From the business project root, run:
+在业务工程根目录执行：
 
 ```bash
 npx @sunny/eslint-checker --mode full --for-iflycode
 ```
 
-If direct scoped execution is unavailable, install and run:
+如果 scoped package 无法直接执行，安装后执行：
 
 ```bash
 npm install -D @sunny/eslint-checker
 npx eslint-checker --mode full --for-iflycode
 ```
 
-Wait for `.eslint-checker/report.json`. If it is missing, inspect `.eslint-checker/lint-log.txt` when available and produce an incomplete-check report with the failure cause.
+等待 `.eslint-checker/report.json` 生成。若缺失，检查 `.eslint-checker/lint-log.txt`，并仅基于命令失败上下文和日志产出检查未完成报告。
+
+## Output Materials
+
+解析完成后输出两份材料：
+
+1. `.eslint-checker/iflycode-key-data.json`：关键数据，用于后续多工程汇总。
+2. `.eslint-checker/iflycode-eslint-governance-report.md`：正式交付文档，使用固定章节模板。
+
+Markdown 文档是正式交付物，不再生成其他文档格式。
 
 ## Formal Report Rules
 
-- Treat `.eslint-checker/report.json` as the only source of factual counts and statuses.
-- Do not invent lint counts, disabled-rule counts, package data, or execution status.
-- Use `unknown`, `not_collected`, `skipped`, or recorded failure reasons when facts are absent.
-- Mention generated artifacts: `report.json`, `summary.md`, `eslint-summary.json`, `eslint-config.json`, and `lint-log.txt`.
-- Mention `eslint-report.json` only when `artifacts.eslintReportJson` is present; it is an opt-in raw debug artifact.
-- Use `lintEvidence` for representative examples when writing the main issue analysis, but do not expand beyond recorded examples.
-- Distinguish `eslintConfigAnalysis` from `eslintResolvedConfig`: config quality is static governance analysis, while `eslint-config.json` is the resolved effective config emitted from ESLint `--print-config`.
+- 将 `.eslint-checker/report.json` 作为 factual counts、statuses、package data、lint evidence、recommendations 的唯一事实来源。
+- 不得编造 lint counts、disabled-rule counts、package data、execution status 或不存在的 evidence。
+- 事实缺失时使用 `unknown`、`not_collected`、`skipped`、`not_applicable` 或已记录的 failure reason。
+- 数值字段已知时必须是 number；未采集时使用 `null`，不要用中文描述替代数值。
+- narrative content 使用中文；技术类专业术语、字段名、artifact 名、ruleId、command、status keyword 使用 English。
+- 必须提及默认产物：`report.json`、`summary.md`、`eslint-summary.json`、`eslint-config.json`、`lint-log.txt`。
+- 仅当 `artifacts.eslintReportJson` 存在时提及 `eslint-report.json`；它是 opt-in raw debug artifact。
+- 使用 `lintEvidence` 写代表性问题示例，但不得扩展到记录样例之外。
+- 区分 `eslintConfigAnalysis` 与 `eslintResolvedConfig`：前者是 static governance analysis，后者或 `eslint-config.json` 是 ESLint `--print-config` 产出的 effective config。
 
-## Report Sections
+## Unknown Field Completion
 
-1. Project overview: package, stack, Git status, Node/package manager.
-2. ESLint access: dependency, config, `eslintConfig`, and lint script status.
-3. Config quality: disabled format, quality, stack-specific rules, and resolved config collection status.
-4. Disable usage: total disables, file-level disables, broad disables, and concentrated files.
-5. Lint execution: command, status, timeout, exit code, and recovery.
-6. Findings and risk: use `riskAssessment` reasons and recommendations.
-7. Next steps: only recommendations supported by report data.
+在生成 `.eslint-checker/iflycode-key-data.json` 和 `.eslint-checker/iflycode-eslint-governance-report.md` 前，必须先识别会输出为 `unknown` 的字段，并逐项通过交互式输入引导用户填写。
+
+Completion rules:
+
+- 仅补全 human-owned fields，例如 `system`、`center`、`owner`、`projectRootLabel`、业务系统名称、负责人、所属中心、检查时间展示值等。
+- 不得要求用户补写机器采集失败的事实字段，例如 lint counts、disable counts、`lintExecution.status`、`exitCode`、`eslintResolvedConfig.status`、`not_collected`、`skipped` 或 recorded failure reason。
+- 每次询问应说明字段用途、当前值为 `unknown`、该值会出现在哪个章节或 key-data path 中。
+- 用户可以明确选择跳过；跳过后该字段保留 `unknown`，并在 `9.3 未采集项` 中说明 `用户未提供`。
+- 用户提供的值必须同时写入 key data 和 Markdown report，确保两份输出一致。
+- 不得把用户补充的业务元数据回写到 `.eslint-checker/report.json`，除非 checker 后续明确支持该 schema。
+
+Recommended prompt format:
+
+```text
+报告字段 `<fieldPath>` 当前为 `unknown`，将用于 `<reportSection>`。请提供该字段的值；如果无法确认，请回复 `skip` 保留 unknown。
+```
+
+## Key Data Artifact
+
+生成 `.eslint-checker/iflycode-key-data.json`，用于后续多工程汇总。字段必须从 `.eslint-checker/report.json` 派生。
+
+Required top-level shape:
+
+```json
+{
+  "schemaVersion": "1.0",
+  "generatedAt": "unknown",
+  "project": {},
+  "environment": {},
+  "eslintAccess": {},
+  "configQuality": {},
+  "disableUsage": {},
+  "lintExecution": {},
+  "lintResult": {},
+  "risk": {},
+  "recommendations": [],
+  "artifacts": {}
+}
+```
+
+Recommended fields:
+
+| Area | Fields |
+| --- | --- |
+| project | `packageName`, `packageVersion`, `stack`, `gitBranch`, `gitDirty`, `projectRootLabel` |
+| environment | `nodeVersion`, `packageManager`, `packageManagerVersion` |
+| eslintAccess | `dependencyStatus`, `configStatus`, `eslintConfigStatus`, `lintScriptStatus` |
+| configQuality | `qualityStatus`, `disabledFormat`, `stackRuleCoverage`, `resolvedConfigStatus` |
+| disableUsage | `totalDisables`, `fileLevelDisables`, `broadDisables`, `concentratedFiles` |
+| lintExecution | `command`, `status`, `timeoutSeconds`, `exitCode`, `recoveryStatus`, `failureReason` |
+| lintResult | `errorCount`, `warningCount`, `fixableErrorCount`, `fixableWarningCount`, `topRules`, `topFiles` |
+| risk | `level`, `reasons`, `governanceImpact`, `deliveryImpact` |
+| recommendations | data-supported action list |
+| artifacts | `reportJson`, `summaryMd`, `eslintSummaryJson`, `eslintConfigJson`, `lintLogTxt`, optional `eslintReportJson` |
+
+## Markdown Report Template
+
+Markdown 文档必须包含全部章节，章节顺序和标题固定。无数据的章节不得删除，必须写明缺失原因。
+
+### 0. 封面
+
+Required content:
+
+- 报告标题：`ESLint 治理检查报告`
+- 项目名称
+- system、center、owner；未提供时写 `unknown`
+- 检查时间；缺失时写 `unknown`
+- 数据来源声明：本报告基于 `.eslint-checker/report.json` 生成
+
+### 1. 执行摘要
+
+Subsections:
+
+1. `1.1 检查结论`：从 factual status 和 `riskAssessment` 映射为 `通过`、`需治理` 或 `检查未完成`。
+2. `1.2 核心指标`：表格展示 ESLint access、config quality、disable usage、lint execution、lint issue counts、risk level。
+3. `1.3 主要风险`：最多三条 `riskAssessment` reasons。
+4. `1.4 优先建议`：最多三条由 report data 支撑的 recommendations。
+
+若 lint 未执行，必须明确写 `检查未完成` 并引用 recorded failure reason。
+
+### 2. 项目与环境概况
+
+Subsections:
+
+1. `2.1 项目信息`：package name/version、stack、project root label。
+2. `2.2 Git 状态`：branch、dirty status、commit if available。
+3. `2.3 Node 与包管理器`：Node version、package manager、package manager version。
+4. `2.4 产物清单`：列出 artifacts 和存在状态。
+
+### 3. ESLint 接入状态
+
+Subsections:
+
+1. `3.1 dependency 状态`
+2. `3.2 config 状态`
+3. `3.3 package.json eslintConfig 状态`
+4. `3.4 lint script 状态`
+5. `3.5 接入完整性判断`
+
+每个 subsection 使用固定行：`状态`、`证据`、`影响`。
+
+### 4. Config 质量分析
+
+Subsections:
+
+1. `4.1 配置可维护性`：disabled format、parser/settings clarity、maintainability facts。
+2. `4.2 规则覆盖情况`：stack-specific rules 和 missing/weak coverage。
+3. `4.3 resolved config 采集状态`：是否采集 `eslint-config.json`。
+4. `4.4 Config 风险判断`：由 config quality 导致的 governance risk。
+
+### 5. Disable 使用分析
+
+Subsections:
+
+1. `5.1 disable 总量`
+2. `5.2 file-level disable`
+3. `5.3 broad disable`
+4. `5.4 集中度分析`
+5. `5.5 治理影响`
+
+仅使用 report data 中记录的 file paths 和 counts，不推断源码意图。
+
+### 6. Lint 执行结果
+
+Subsections:
+
+1. `6.1 执行命令`
+2. `6.2 执行状态`
+3. `6.3 recovery 情况`
+4. `6.4 问题总览`
+5. `6.5 Top rules`
+6. `6.6 Top files`
+
+当 lint execution 为 `skipped`、`failed` 或 `timeout` 时，结果 count 保持 not collected，并说明原因。
+
+### 7. 代表性问题与风险
+
+Subsections:
+
+1. `7.1 代表性 lint evidence`
+2. `7.2 rule 维度风险`
+3. `7.3 file 维度风险`
+4. `7.4 综合风险等级`
+
+代表性示例只能来自 `lintEvidence`。除非 report data 已包含源码片段，否则不引用源码。
+
+### 8. 治理建议与优先级
+
+Subsections:
+
+1. `8.1 P0 建议`：恢复或 unblock check execution。
+2. `8.2 P1 建议`：降低高影响 governance risks。
+3. `8.3 P2 建议`：提升 maintainability 和长期一致性。
+4. `8.4 建议与证据映射`：recommendation 到 supporting report fields 的映射表。
+
+缺少 supporting fact 时，必须省略或降低对应 recommendation。
+
+### 9. 附录
+
+Subsections:
+
+1. `9.1 字段口径`：说明主要 metrics 和 status meanings。
+2. `9.2 数据来源`：列出 source artifacts。
+3. `9.3 未采集项`：列出 `unknown`、`not_collected`、`skipped` items 及原因。
+
+## Incomplete Check Handling
+
+如果 `.eslint-checker/report.json` 缺失：
+
+- 不生成 `.eslint-checker/iflycode-key-data.json`，除非存在足够的结构化 failure metadata。
+- 仅基于 `.eslint-checker/lint-log.txt` 和 command failure context 生成检查未完成的 Markdown 报告。
+- factual fields 标记为 `not_collected`，并说明 failure cause。
+
+如果 `.eslint-checker/report.json` 存在但 optional fields 缺失：
+
+- 仍生成 key data 和 Markdown report。
+- 保留完整章节结构。
+- 使用稳定 fallback values，并在 `9.3 未采集项` 说明缺失原因。

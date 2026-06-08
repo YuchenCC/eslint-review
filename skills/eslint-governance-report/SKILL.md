@@ -14,7 +14,34 @@ description: Use when generating an ESLint governance report for a JavaScript or
 
 ## Existing Output Choice
 
-每次准备报告前，必须先检查业务工程根目录下是否存在 `.eslint-checker`。
+每次准备报告前，必须先检查业务工程根目录下是否存在 `.eslint-checker`。检查前必须先确认当前目录就是业务工程根目录；不要在 checker 工程根目录、父目录或其他工作目录用相对路径判断业务工程的 `.eslint-checker`。
+
+PowerShell / pwsh 检查代码：
+
+```powershell
+$ProjectRoot = (Get-Location).Path
+$CheckerOutput = Join-Path $ProjectRoot '.eslint-checker'
+$CheckerOutputExists = Test-Path -LiteralPath $CheckerOutput -PathType Container
+
+if ($CheckerOutputExists) {
+  "EXISTING_ESLINT_CHECKER_OUTPUT=present"
+} else {
+  "EXISTING_ESLINT_CHECKER_OUTPUT=missing"
+}
+```
+
+Bash 检查代码：
+
+```bash
+project_root="$(pwd)"
+checker_output="$project_root/.eslint-checker"
+
+if [ -d "$checker_output" ]; then
+  echo "EXISTING_ESLINT_CHECKER_OUTPUT=present"
+else
+  echo "EXISTING_ESLINT_CHECKER_OUTPUT=missing"
+fi
+```
 
 如果 `.eslint-checker` 已存在，必须先让用户选择本次数据来源：
 
@@ -30,15 +57,21 @@ description: Use when generating an ESLint governance report for a JavaScript or
 PowerShell:
 
 ```powershell
-if (Test-Path .eslint-checker) {
-  Remove-Item .eslint-checker -Recurse -Force
+$ProjectRoot = (Get-Location).Path
+$CheckerOutput = Join-Path $ProjectRoot '.eslint-checker'
+$CheckerOutputExists = Test-Path -LiteralPath $CheckerOutput -PathType Container
+
+if ($CheckerOutputExists) {
+  Remove-Item -LiteralPath $CheckerOutput -Recurse -Force
 }
 ```
 
 Bash:
 
 ```bash
-rm -rf .eslint-checker
+project_root="$(pwd)"
+checker_output="$project_root/.eslint-checker"
+rm -rf "$checker_output"
 ```
 
 删除旧目录后，再执行 `npx @sunny/eslint-checker --mode full`。

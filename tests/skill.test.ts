@@ -65,7 +65,18 @@ describe("ESLint governance report skill template", () => {
     expect(skill).toContain("如果 `.eslint-checker` 已存在，必须先让用户选择本次数据来源");
     expect(skill).toContain("重新生成：删除整个 `.eslint-checker` 目录后重新运行 checker");
     expect(skill).toContain("使用现有结果：不删除 `.eslint-checker`，不重新运行 checker");
-    expect(skill).toContain("Remove-Item .eslint-checker -Recurse -Force");
+    expect(skill).toContain("Remove-Item -LiteralPath $CheckerOutput -Recurse -Force");
+  });
+
+  test("uses a project-root-bound Windows path when checking existing checker output", async () => {
+    const skill = await readFile(skillPath, "utf8");
+
+    expect(skill).toContain("$ProjectRoot = (Get-Location).Path");
+    expect(skill).toContain("$CheckerOutput = Join-Path $ProjectRoot '.eslint-checker'");
+    expect(skill).toContain("$CheckerOutputExists = Test-Path -LiteralPath $CheckerOutput -PathType Container");
+    expect(skill).toContain("if ($CheckerOutputExists) {");
+    expect(skill).toContain("Test-Path -LiteralPath $CheckerOutput -PathType Container");
+    expect(skill).toContain("Remove-Item -LiteralPath $CheckerOutput -Recurse -Force");
   });
 
   test("requires Beijing time for displayed report check time", async () => {

@@ -12,7 +12,11 @@ export function assessRisk(report: Omit<CheckerReport, "riskAssessment">): RiskA
   } else if (report.eslintAccess.accessLevel === "partial") {
     score += 20;
     reasons.push("ESLint access is partial");
-    recommendations.push("Complete ESLint config and lint script setup");
+    if (report.eslintAccess.managedBy === "jupui") {
+      recommendations.push("Install or restore jupui-managed project dependencies");
+    } else {
+      recommendations.push("Complete ESLint config and lint script setup");
+    }
   }
 
   if (report.eslintConfigAnalysis.disabledRuleCount >= 10) {

@@ -4,6 +4,8 @@ import path from "node:path";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { runChecker } from "../src/index.js";
 import { checkerReportSchema } from "../src/report/schema.js";
+import { assessRisk } from "../src/report/risk.js";
+import type { CheckerReport } from "../src/types.js";
 import { runCommand } from "../src/utils/commands.js";
 
 vi.mock("../src/utils/commands.js", () => ({
@@ -15,6 +17,54 @@ const mockedRunCommand = vi.mocked(runCommand);
 describe("report artifacts", () => {
   beforeEach(() => {
     mockedRunCommand.mockReset();
+  });
+
+  test("does not recommend direct ESLint setup for connected jupui-managed access", () => {
+    const risk = assessRisk(
+      minimalRiskReport({
+        eslintAccess: {
+          accessLevel: "connected",
+          eslintDependencyDetected: true,
+          eslintManagedDependencyDetected: true,
+          eslintPackages: ["eslint"],
+          directEslintPackages: [],
+          managedEslintPackages: ["eslint"],
+          managedBy: "jupui",
+          eslintConfigDetected: true,
+          configFiles: [".eslintrc.js"],
+          packageJsonEslintConfigDetected: false,
+          lintScriptDetected: true,
+          lintScripts: { lint: "jupui-service lint" }
+        }
+      })
+    );
+
+    expect(risk.reasons).not.toContain("ESLint access is partial");
+    expect(risk.recommendations).not.toContain("Complete ESLint config and lint script setup");
+  });
+
+  test("recommends dependency restoration for partial jupui-managed access", () => {
+    const risk = assessRisk(
+      minimalRiskReport({
+        eslintAccess: {
+          accessLevel: "partial",
+          eslintDependencyDetected: false,
+          eslintManagedDependencyDetected: false,
+          eslintPackages: [],
+          directEslintPackages: [],
+          managedEslintPackages: [],
+          managedBy: "jupui",
+          eslintConfigDetected: true,
+          configFiles: [".eslintrc.js"],
+          packageJsonEslintConfigDetected: false,
+          lintScriptDetected: true,
+          lintScripts: { lint: "jupui-service lint" }
+        }
+      })
+    );
+
+    expect(risk.recommendations).toContain("Install or restore jupui-managed project dependencies");
+    expect(risk.recommendations).not.toContain("Complete ESLint config and lint script setup");
   });
 
   test("writes stable report, summary, and lint log artifacts", async () => {
@@ -504,4 +554,121 @@ function mockFullModeCommands(
       timedOut: false
     };
   });
+}
+
+function minimalRiskReport(
+  overrides: Partial<Omit<CheckerReport, "riskAssessment">>
+): Omit<CheckerReport, "riskAssessment"> {
+  return {
+    schemaVersion: "0.2.0",
+    checkerVersion: "0.1.0",
+    generatedAt: "2026-06-08T00:00:00.000Z",
+    systemInfo: {
+      system: "unknown",
+      center: "unknown",
+      owner: "unknown",
+      nodeVersion: "v24.0.0",
+      packageManager: "npm",
+      packageManagerVersion: "10.0.0",
+      cwd: "/tmp/project"
+    },
+    gitInfo: {
+      branch: "main",
+      commit: "unknown",
+      dirty: false,
+      status: "success"
+    },
+    projectInfo: {
+      hasPackageJson: true,
+      packageName: "fixture",
+      packageVersion: "1.0.0",
+      stack: "vue",
+      dependencies: ["jupui"],
+      devDependencies: [],
+      packageManagerLockfile: "package-lock.json"
+    },
+    eslintAccess: {
+      accessLevel: "not_connected",
+      eslintDependencyDetected: false,
+      eslintPackages: [],
+      eslintConfigDetected: false,
+      configFiles: [],
+      packageJsonEslintConfigDetected: false,
+      lintScriptDetected: false,
+      lintScripts: {}
+    },
+    eslintConfigAnalysis: {
+      status: "success",
+      analyzedFiles: [],
+      extendedConfigs: [],
+      extendedPackages: [],
+      disabledFormatRules: [],
+      disabledQualityRules: [],
+      disabledStackRules: [],
+      disabledRuleCount: 0,
+      weakenedStandardConfig: false,
+      limitations: [],
+      findings: []
+    },
+    eslintResolvedConfig: {
+      status: "skipped",
+      command: "",
+      timeoutSeconds: 1,
+      exitCode: null,
+      durationMs: null,
+      targetFile: "",
+      outputPath: ".eslint-checker/eslint-config.json"
+    },
+    eslintDisableAnalysis: {
+      status: "success",
+      scannedDirectory: "src",
+      totalDisableCount: 0,
+      fileLevelDisableCount: 0,
+      disableWithoutRuleCount: 0,
+      broadDisableCount: 0,
+      topFiles: [],
+      findings: []
+    },
+    lintExecution: {
+      status: "skipped",
+      command: "",
+      timeoutSeconds: 1,
+      exitCode: null,
+      durationMs: null
+    },
+    lintRecovery: {
+      enabled: false,
+      attempted: false,
+      status: "not_collected",
+      retryCount: 0,
+      installedPackages: [],
+      installCommand: "",
+      modifiedFiles: []
+    },
+    lintResult: {
+      status: "not_collected",
+      errorCount: 0,
+      warningCount: 0,
+      fixableErrorCount: 0,
+      fixableWarningCount: 0,
+      fileCount: 0,
+      problemFileCount: 0
+    },
+    ruleSummary: [],
+    fileSummary: [],
+    lintEvidence: {
+      topRuleExamples: [],
+      topFileExamples: []
+    },
+    artifacts: {
+      outputDirectory: ".eslint-checker",
+      reportJson: ".eslint-checker/report.json",
+      summaryMarkdown: ".eslint-checker/summary.md",
+      eslintSummaryJson: ".eslint-checker/eslint-summary.json",
+      eslintReportJson: null,
+      eslintConfigJson: ".eslint-checker/eslint-config.json",
+      lintLog: ".eslint-checker/lint-log.txt"
+    },
+    ...overrides
+  };
 }

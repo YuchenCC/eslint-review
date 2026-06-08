@@ -1,0 +1,13 @@
+{
+  "name": "jupui-managed-2",
+  "version": "1.0.0",
+  "scripts": {
+    "lint": "jupui-service lint"
+  },
+  "dependencies": {
+    "jupui": "2.0.12"
+  },
+  "vuePlugins": {
+    "resolveFrom": "node_modules/jupui"
+  }
+}

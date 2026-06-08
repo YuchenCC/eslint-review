@@ -1,3 +1,4 @@
+import { createRequire } from "node:module";
 import path from "node:path";
 import YAML from "yaml";
 import type { EslintConfigAnalysis } from "../types.js";
@@ -33,10 +34,12 @@ const STACK_RULES = [
 ];
 
 const DISABLED_TEXT_PATTERN = /['"]([^'"]+)['"]\s*:\s*(?:['"]off['"]|0|\[\s*(?:['"]off['"]|0))/g;
+const REQUIRE_RESOLVE_PATTERN = /require\.resolve\(\s*['"]([^'"]+)['"]\s*\)/g;
 
 export async function analyzeEslintConfig(cwd: string): Promise<EslintConfigAnalysis> {
   const analyzedFiles: string[] = [];
   const limitations: string[] = [];
+  const resolvedConfigFiles: string[] = [];
   const disabledRules = new Set<string>();
   const extendedConfigs = new Set<string>();
   let weakenedStandardConfig = false;
@@ -93,6 +96,17 @@ export async function analyzeEslintConfig(cwd: string): Promise<EslintConfigAnal
     collectExtendedConfigsFromText(content, extendedConfigs);
     collectDisabledRulesFromText(content, disabledRules);
     weakenedStandardConfig ||= /extends\s*:\s*[^,\]}]*(standard|airbnb|recommended)/i.test(content);
+    const resolvedConfigs = await resolveReferencedConfigs(cwd, content, limitations);
+    for (const resolvedConfig of resolvedConfigs) {
+      if (analyzedFiles.includes(resolvedConfig.relativePath)) {
+        continue;
+      }
+      analyzedFiles.push(resolvedConfig.relativePath);
+      resolvedConfigFiles.push(resolvedConfig.relativePath);
+      collectExtendedConfigsFromText(resolvedConfig.content, extendedConfigs);
+      collectDisabledRulesFromText(resolvedConfig.content, disabledRules);
+      weakenedStandardConfig ||= /extends\s*:\s*[^,\]}]*(standard|airbnb|recommended)/i.test(resolvedConfig.content);
+    }
   }
 
   if (analyzedFiles.length === 0) {
@@ -107,6 +121,7 @@ export async function analyzeEslintConfig(cwd: string): Promise<EslintConfigAnal
   return {
     status: "success",
     analyzedFiles,
+    resolvedConfigFiles,
     extendedConfigs: [...extendedConfigs],
     extendedPackages: [...new Set([...extendedConfigs].map(toEslintConfigPackage).filter(isPresent))],
     disabledFormatRules,
@@ -123,6 +138,51 @@ export async function analyzeEslintConfig(cwd: string): Promise<EslintConfigAnal
       weakenedStandardConfig: weakenedStandardConfig && disabledRuleCount >= 3
     })
   };
+}
+
+async function resolveReferencedConfigs(
+  cwd: string,
+  content: string,
+  limitations: string[]
+): Promise<Array<{ relativePath: string; content: string }>> {
+  const absoluteCwd = path.resolve(cwd);
+  const requireFromProject = createRequire(path.join(absoluteCwd, "package.json"));
+  const resolvedConfigs: Array<{ relativePath: string; content: string }> = [];
+
+  for (const match of content.matchAll(REQUIRE_RESOLVE_PATTERN)) {
+    const request = match[1];
+    if (!request || request.startsWith(".") || path.isAbsolute(request)) {
+      continue;
+    }
+
+    let resolvedPath: string;
+    try {
+      resolvedPath = requireFromProject.resolve(request);
+    } catch {
+      limitations.push(`Could not resolve ${request}`);
+      continue;
+    }
+
+    const relativePath = normalizePath(path.relative(absoluteCwd, resolvedPath));
+    if (relativePath.startsWith("../") || relativePath === "..") {
+      limitations.push(`Resolved config ${request} outside project root`);
+      continue;
+    }
+
+    const resolvedContent = await readTextFile(resolvedPath);
+    if (!resolvedContent) {
+      limitations.push(`Could not read ${relativePath}`);
+      continue;
+    }
+
+    resolvedConfigs.push({ relativePath, content: resolvedContent });
+  }
+
+  return resolvedConfigs;
+}
+
+function normalizePath(value: string): string {
+  return value.replaceAll("\\", "/");
 }
 
 function collectExtendedConfigsFromConfig(config: EslintConfigObject, extendedConfigs: Set<string>): void {
@@ -256,9 +316,10 @@ function buildFindings({
 }
 
 function emptyAnalysis(status: EslintConfigAnalysis["status"], limitations: string[]): EslintConfigAnalysis {
-  return {
+    return {
     status,
     analyzedFiles: [],
+    resolvedConfigFiles: [],
     extendedConfigs: [],
     extendedPackages: [],
     disabledFormatRules: [],

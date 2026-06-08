@@ -1,0 +1,13 @@
+{
+  "change": "support-jupui-eslint",
+  "phase": "design",
+  "mode": "compact",
+  "canonical_spec": "openspec",
+  "generated_by": "comet-handoff.sh",
+  "context_hash": "2938b1bf437e96f5549b2e5b191d323284acbefa1c9309644b4ab098f3769c72",
+  "files": [
+    { "path": "openspec/changes/support-jupui-eslint/proposal.md", "sha256": "0c489d97e51f259a9edd56887fde06da2b133c6af884afd2b495d6dbc30ed461" },
+    { "path": "openspec/changes/support-jupui-eslint/design.md", "sha256": "817fcd6e70e986d1e88d919eb961a82125e6beefb6ea9b0baf6f65bc648b1866" },
+    { "path": "openspec/changes/support-jupui-eslint/tasks.md", "sha256": "f200487ea21207ecdd157f548b04394ae2c397a12de406dbf2a6a77becc2233f" }
+  ]
+}

@@ -1,0 +1,17 @@
+workflow: full
+phase: build
+build_mode: executing-plans
+build_pause: null
+isolation: branch
+verify_mode: null
+base_ref: 7ccd891f82536f33f725926fa884e31aa8aecfb0
+design_doc: docs/superpowers/specs/2026-06-08-support-jupui-eslint-design.md
+plan: docs/superpowers/plans/2026-06-08-support-jupui-eslint.md
+verify_result: pending
+verification_report: null
+branch_status: pending
+created_at: 2026-06-08
+verified_at: null
+archived: false
+handoff_context: openspec/changes/support-jupui-eslint/.comet/handoff/design-context.json
+handoff_hash: 2938b1bf437e96f5549b2e5b191d323284acbefa1c9309644b4ab098f3769c72

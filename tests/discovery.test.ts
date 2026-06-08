@@ -70,23 +70,56 @@ describe("project and ESLint discovery", () => {
       await rm(cwd, { force: true, recursive: true });
     }
   });
-});
 
-async function createProject(
-  packageJson: Record<string, unknown>,
-  configFiles: readonly string[]
-): Promise<string> {
-  const cwd = await mkdtemp(path.join(tmpdir(), "eslint-checker-discovery-"));
-  await writeFile(path.join(cwd, "package.json"), JSON.stringify(packageJson), "utf8");
+  test("detects installed jupui framework profile", async () => {
+    await expect(discoverProject("fixtures/jupui-managed-2")).resolves.toMatchObject({
+      stack: "vue",
+      frameworkProfile: {
+        name: "jupui",
+        declaredVersion: "2.0.12",
+        installedVersion: "2.0.12",
+        majorVersion: 2,
+        packagePath: "node_modules/jupui",
+        status: "installed"
+      }
+    });
+  });
 
-  for (const configFile of configFiles) {
-    const fullPath = path.join(cwd, configFile);
-    await mkdir(path.dirname(fullPath), { recursive: true });
-    await writeFile(fullPath, "export default {};\n", "utf8");
-  }
+  test("detects declared jupui profile when dependencies are not installed", async () => {
+    await expect(discoverProject("fixtures/jupui-missing-install")).resolves.toMatchObject({
+      frameworkProfile: {
+        name: "jupui",
+        declaredVersion: "3.0.17",
+        installedVersion: "unknown",
+        majorVersion: 3,
+        packagePath: "node_modules/jupui",
+        status: "missing_install",
+        limitations: ["node_modules/jupui/package.json could not be read"]
+      }
+    });
+  });
 
-  return cwd;
-}
+  test("uses jupui-managed ESLint packages as access evidence", async () => {
+    await expect(detectEslintAccess("fixtures/jupui-managed-2")).resolves.toMatchObject({
+      accessLevel: "connected",
+      eslintDependencyDetected: true,
+      eslintManagedDependencyDetected: true,
+      directEslintPackages: [],
+      managedBy: "jupui",
+      managedEslintPackages: expect.arrayContaining(["eslint", "eslint-plugin-vue", "@typescript-eslint/parser"])
+    });
+  });
+
+  test("keeps jupui access partial when managed dependencies are not installed", async () => {
+    await expect(detectEslintAccess("fixtures/jupui-missing-install")).resolves.toMatchObject({
+      accessLevel: "partial",
+      eslintDependencyDetected: false,
+      eslintManagedDependencyDetected: false,
+      directEslintPackages: [],
+      managedBy: "jupui",
+      limitations: ["node_modules/jupui/package.json could not be read"]
+    });
+  });
 
   test("collects ESLint ecosystem packages and lint scripts", async () => {
     const cwd = await createProject(
@@ -120,3 +153,20 @@ async function createProject(
       await rm(cwd, { force: true, recursive: true });
     }
   });
+});
+
+async function createProject(
+  packageJson: Record<string, unknown>,
+  configFiles: readonly string[]
+): Promise<string> {
+  const cwd = await mkdtemp(path.join(tmpdir(), "eslint-checker-discovery-"));
+  await writeFile(path.join(cwd, "package.json"), JSON.stringify(packageJson), "utf8");
+
+  for (const configFile of configFiles) {
+    const fullPath = path.join(cwd, configFile);
+    await mkdir(path.dirname(fullPath), { recursive: true });
+    await writeFile(fullPath, "export default {};\n", "utf8");
+  }
+
+  return cwd;
+}

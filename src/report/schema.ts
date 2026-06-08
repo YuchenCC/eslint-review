@@ -21,6 +21,16 @@ const lintEvidenceSchema = z.object({
   )
 });
 
+const frameworkProfileSchema = z.object({
+  name: z.literal("jupui"),
+  declaredVersion: z.string(),
+  installedVersion: z.string(),
+  majorVersion: z.number().nullable(),
+  packagePath: z.string(),
+  status: z.string(),
+  limitations: z.array(z.string())
+});
+
 export const checkerReportSchema = z.object({
   schemaVersion: z.literal("0.2.0"),
   checkerVersion: z.string(),
@@ -47,21 +57,28 @@ export const checkerReportSchema = z.object({
     stack: z.string(),
     dependencies: z.array(z.string()),
     devDependencies: z.array(z.string()),
-    packageManagerLockfile: z.string()
+    packageManagerLockfile: z.string(),
+    frameworkProfile: frameworkProfileSchema.optional()
   }),
   eslintAccess: z.object({
     accessLevel: z.string(),
     eslintDependencyDetected: z.boolean(),
     eslintPackages: z.array(z.string()),
+    directEslintPackages: z.array(z.string()).optional(),
+    managedEslintPackages: z.array(z.string()).optional(),
+    managedBy: z.string().optional(),
+    eslintManagedDependencyDetected: z.boolean().optional(),
     eslintConfigDetected: z.boolean(),
     configFiles: z.array(z.string()),
     packageJsonEslintConfigDetected: z.boolean(),
     lintScriptDetected: z.boolean(),
-    lintScripts: z.record(z.string())
+    lintScripts: z.record(z.string()),
+    limitations: z.array(z.string()).optional()
   }),
   eslintConfigAnalysis: z.object({
     status: z.string(),
     analyzedFiles: z.array(z.string()),
+    resolvedConfigFiles: z.array(z.string()).optional(),
     extendedConfigs: z.array(z.string()),
     extendedPackages: z.array(z.string()),
     disabledFormatRules: z.array(z.string()),

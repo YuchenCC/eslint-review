@@ -5,7 +5,12 @@ import path from "node:path";
 import { tmpdir } from "node:os";
 import { executeLint } from "../src/lint/execute.js";
 import { parseEslintSummary } from "../src/lint/parse.js";
-import { buildInstallCommand, diagnoseMissingDependency, recoverAndRetry } from "../src/lint/recovery.js";
+import {
+  buildDependencyRestoreCommand,
+  buildInstallCommand,
+  diagnoseMissingDependency,
+  recoverAndRetry
+} from "../src/lint/recovery.js";
 import type { EslintAccess, SourceEntries } from "../src/types.js";
 import { runCommand } from "../src/utils/commands.js";
 
@@ -430,6 +435,14 @@ describe("lint execution", () => {
       args: ["add", "-D", "eslint-plugin-vue"],
       text: "pnpm add -D eslint-plugin-vue"
     });
+  });
+
+  test.each([
+    ["npm", { command: "npm", args: ["install"], text: "npm install" }],
+    ["yarn", { command: "yarn", args: ["install"], text: "yarn install" }],
+    ["pnpm", { command: "pnpm", args: ["install"], text: "pnpm install" }]
+  ] as const)("builds package-manager restore command for %s", (packageManager, expectedCommand) => {
+    expect(buildDependencyRestoreCommand(packageManager)).toEqual(expectedCommand);
   });
 
   test("logs when recovery skips a failure without installable dependency evidence", async () => {

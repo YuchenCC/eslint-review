@@ -30,6 +30,29 @@ describe("ESLint analysis", () => {
     });
   });
 
+  test("resolves and analyzes jupui shared ESLint config references", async () => {
+    await expect(analyzeEslintConfig("fixtures/jupui-managed-2")).resolves.toMatchObject({
+      status: "success",
+      analyzedFiles: expect.arrayContaining([".eslintrc.js", "node_modules/jupui/.eslintrc.js"]),
+      resolvedConfigFiles: ["node_modules/jupui/.eslintrc.js"],
+      extendedConfigs: expect.arrayContaining([
+        "plugin:vue/essential",
+        "eslint:recommended",
+        "@vue/typescript/recommended"
+      ]),
+      disabledFormatRules: expect.arrayContaining(["quotes"])
+    });
+  });
+
+  test("keeps root config analysis when jupui shared config cannot be resolved", async () => {
+    await expect(analyzeEslintConfig("fixtures/jupui-missing-install")).resolves.toMatchObject({
+      status: "success",
+      analyzedFiles: expect.arrayContaining([".eslintrc.js"]),
+      resolvedConfigFiles: [],
+      limitations: expect.arrayContaining(["Could not resolve jupui/.eslintrc.js"])
+    });
+  });
+
   test("scans src-only ESLint disable comments", async () => {
     await expect(scanEslintDisable("fixtures/disable-heavy", sourceEntries)).resolves.toMatchObject({
       status: "success",

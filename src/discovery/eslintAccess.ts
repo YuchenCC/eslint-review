@@ -30,7 +30,9 @@ export async function detectEslintAccess(cwd: string): Promise<EslintAccess> {
     ...Object.keys(packageJson?.dependencies ?? {}),
     ...Object.keys(packageJson?.devDependencies ?? {})
   ].sort();
-  const eslintPackages = packageNames.filter(isEslintPackage);
+  const directEslintPackages = packageNames.filter(isEslintPackage);
+  const managed = await collectJupuiManagedEslintPackages(cwd, packageJson);
+  const eslintPackages = [...new Set([...directEslintPackages, ...managed.packages])].sort();
   const configFiles = await listExistingFiles(cwd, ESLINT_CONFIG_FILES);
   const packageJsonEslintConfigDetected = packageJson?.eslintConfig !== undefined;
   const lintScripts = Object.fromEntries(
@@ -50,11 +52,46 @@ export async function detectEslintAccess(cwd: string): Promise<EslintAccess> {
     }),
     eslintDependencyDetected,
     eslintPackages,
+    directEslintPackages,
+    managedEslintPackages: managed.packages,
+    ...(managed.managedBy ? { managedBy: managed.managedBy } : {}),
+    eslintManagedDependencyDetected: managed.packages.includes("eslint"),
     eslintConfigDetected,
     configFiles,
     packageJsonEslintConfigDetected,
     lintScriptDetected,
-    lintScripts
+    lintScripts,
+    ...(managed.limitations.length > 0 ? { limitations: managed.limitations } : {})
+  };
+}
+
+async function collectJupuiManagedEslintPackages(
+  cwd: string,
+  packageJson: PackageJson | undefined
+): Promise<{ packages: string[]; managedBy?: string; limitations: string[] }> {
+  const declaresJupui = packageJson?.dependencies?.jupui !== undefined || packageJson?.devDependencies?.jupui !== undefined;
+  if (!declaresJupui) {
+    return { packages: [], limitations: [] };
+  }
+
+  const jupuiPackageJson = await readJsonFile<PackageJson>(path.join(cwd, "node_modules/jupui/package.json"));
+  if (!jupuiPackageJson) {
+    return {
+      packages: [],
+      managedBy: "jupui",
+      limitations: ["node_modules/jupui/package.json could not be read"]
+    };
+  }
+
+  const packageNames = [
+    ...Object.keys(jupuiPackageJson.dependencies ?? {}),
+    ...Object.keys(jupuiPackageJson.devDependencies ?? {})
+  ].sort();
+
+  return {
+    packages: packageNames.filter(isEslintPackage),
+    managedBy: "jupui",
+    limitations: []
   };
 }
 
@@ -64,7 +101,8 @@ function isEslintPackage(packageName: string): boolean {
     packageName.startsWith("eslint-") ||
     packageName.startsWith("@eslint/") ||
     packageName.startsWith("@typescript-eslint/") ||
-    packageName.includes("/eslint-")
+    packageName.includes("/eslint-") ||
+    packageName.startsWith("@vue/eslint-config-")
   );
 }
 

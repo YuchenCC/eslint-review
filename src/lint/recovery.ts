@@ -46,6 +46,16 @@ export function buildInstallCommand(
   return command("npm", ["install", "-D", ...packages]);
 }
 
+export function buildDependencyRestoreCommand(packageManager: PackageManagerName): InstallCommand {
+  if (packageManager === "pnpm") {
+    return command("pnpm", ["install"]);
+  }
+  if (packageManager === "yarn") {
+    return command("yarn", ["install"]);
+  }
+  return command("npm", ["install"]);
+}
+
 export async function recoverAndRetry({
   packageManager,
   failedExecution,

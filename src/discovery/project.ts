@@ -1,8 +1,8 @@
 import { execFile } from "node:child_process";
 import path from "node:path";
 import { promisify } from "node:util";
-import type { GitInfo, PackageManagerName, ProjectInfo, StackName } from "../types.js";
-import { listExistingFiles, readJsonFile } from "../utils/fs.js";
+import type { FrameworkProfile, GitInfo, PackageManagerName, ProjectInfo, StackName } from "../types.js";
+import { listExistingFiles, readJsonFile, readTextFile } from "../utils/fs.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -11,6 +11,10 @@ interface PackageJson {
   version?: string;
   dependencies?: Record<string, string>;
   devDependencies?: Record<string, string>;
+  scripts?: Record<string, string>;
+  vuePlugins?: {
+    resolveFrom?: string;
+  };
 }
 
 export interface ProjectDiscovery extends ProjectInfo {
@@ -32,6 +36,7 @@ export async function discoverProject(cwd: string): Promise<ProjectDiscovery> {
   const devDependencies = Object.keys(packageJson?.devDependencies ?? {}).sort();
   const packageManagerLockfile = await detectPackageManagerLockfile(cwd);
   const packageManager = packageManagerLockfile.manager;
+  const frameworkProfile = await detectFrameworkProfile(cwd, packageJson);
 
   return {
     hasPackageJson: packageJson !== undefined,
@@ -41,11 +46,55 @@ export async function discoverProject(cwd: string): Promise<ProjectDiscovery> {
     dependencies,
     devDependencies,
     packageManagerLockfile: packageManagerLockfile.file,
+    ...(frameworkProfile ? { frameworkProfile } : {}),
     gitInfo: await discoverGitInfo(cwd),
     nodeVersion: process.version,
     packageManager,
     packageManagerVersion: await getPackageManagerVersion(packageManager)
   };
+}
+
+async function detectFrameworkProfile(
+  cwd: string,
+  packageJson: PackageJson | undefined
+): Promise<FrameworkProfile | undefined> {
+  const declaredVersion = packageJson?.dependencies?.jupui ?? packageJson?.devDependencies?.jupui;
+  const [eslintConfig, tsconfig] = await Promise.all([
+    readTextFile(path.join(cwd, ".eslintrc.js")),
+    readTextFile(path.join(cwd, "tsconfig.json"))
+  ]);
+  const hasJupuiSignal =
+    declaredVersion !== undefined ||
+    packageJson?.vuePlugins?.resolveFrom === "node_modules/jupui" ||
+    Object.values(packageJson?.scripts ?? {}).some((script) => script.includes("jupui-service")) ||
+    (eslintConfig?.includes("jupui/.eslintrc.js") ?? false) ||
+    (tsconfig?.includes("./node_modules/jupui/tsconfig") ?? false);
+
+  if (!hasJupuiSignal) {
+    return undefined;
+  }
+
+  const packagePath = "node_modules/jupui";
+  const installedPackage = await readJsonFile<PackageJson & { version?: string }>(
+    path.join(cwd, packagePath, "package.json")
+  );
+  const limitations = installedPackage ? [] : ["node_modules/jupui/package.json could not be read"];
+  const effectiveDeclaredVersion = declaredVersion ?? "unknown";
+
+  return {
+    name: "jupui",
+    declaredVersion: effectiveDeclaredVersion,
+    installedVersion: installedPackage?.version ?? "unknown",
+    majorVersion: parseMajorVersion(installedPackage?.version ?? effectiveDeclaredVersion),
+    packagePath,
+    status: installedPackage ? "installed" : "missing_install",
+    limitations
+  };
+}
+
+function parseMajorVersion(version: string): number | null {
+  const match = version.match(/\d+/);
+  return match ? Number.parseInt(match[0], 10) : null;
 }
 
 async function detectPackageManagerLockfile(

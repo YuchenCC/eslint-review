@@ -135,7 +135,8 @@ export async function runChecker({ cwd, options }: RunCheckerInput): Promise<Che
       stack: projectDiscovery.stack,
       dependencies: projectDiscovery.dependencies,
       devDependencies: projectDiscovery.devDependencies,
-      packageManagerLockfile: projectDiscovery.packageManagerLockfile
+      packageManagerLockfile: projectDiscovery.packageManagerLockfile,
+      ...(projectDiscovery.frameworkProfile ? { frameworkProfile: projectDiscovery.frameworkProfile } : {})
     },
     eslintAccess,
     eslintConfigAnalysis,

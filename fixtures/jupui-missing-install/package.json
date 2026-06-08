@@ -1,0 +1,13 @@
+{
+  "name": "jupui-missing-install",
+  "version": "1.0.0",
+  "scripts": {
+    "lint": "jupui-service lint"
+  },
+  "dependencies": {
+    "jupui": "3.0.17"
+  },
+  "vuePlugins": {
+    "resolveFrom": "node_modules/jupui"
+  }
+}

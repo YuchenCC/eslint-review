@@ -46,6 +46,16 @@ export interface GitInfo {
   failureReason?: string;
 }
 
+export interface FrameworkProfile {
+  name: "jupui";
+  declaredVersion: string;
+  installedVersion: string;
+  majorVersion: number | null;
+  packagePath: string;
+  status: "detected" | "installed" | "missing_install";
+  limitations: string[];
+}
+
 export interface ProjectInfo {
   hasPackageJson: boolean;
   packageName: string;
@@ -54,17 +64,23 @@ export interface ProjectInfo {
   dependencies: string[];
   devDependencies: string[];
   packageManagerLockfile: string;
+  frameworkProfile?: FrameworkProfile;
 }
 
 export interface EslintAccess {
   accessLevel: EslintAccessLevel;
   eslintDependencyDetected: boolean;
   eslintPackages: string[];
+  directEslintPackages?: string[];
+  managedEslintPackages?: string[];
+  managedBy?: string;
+  eslintManagedDependencyDetected?: boolean;
   eslintConfigDetected: boolean;
   configFiles: string[];
   packageJsonEslintConfigDetected: boolean;
   lintScriptDetected: boolean;
   lintScripts: Record<string, string>;
+  limitations?: string[];
   failureReason?: string;
 }
 
@@ -76,6 +92,7 @@ export interface SourceEntries {
 export interface EslintConfigAnalysis {
   status: CollectionStatus;
   analyzedFiles: string[];
+  resolvedConfigFiles?: string[];
   extendedConfigs: string[];
   extendedPackages: string[];
   disabledFormatRules: string[];

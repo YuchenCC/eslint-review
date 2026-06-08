@@ -18,6 +18,12 @@ Useful options:
 - `--system`, `--center`, `--owner`: attach report metadata.
 - `--for-iflycode`: emit artifacts for iflycode report generation.
 
+Source discovery:
+
+- ESLint execution, `eslint-disable` scanning, and resolved config collection use the same discovered source entries.
+- Supported entries are `src`, `apps/*/src`, `apps/*/app`, `packages/*/src`, and `packages/*/app`.
+- Generated and public assets are excluded, including `public`, nested `public`, `dist`, `build`, `node_modules`, the output directory, and `*.min.js`.
+
 Generated artifacts:
 
 - `.eslint-checker/report.json`: stable machine-readable report.

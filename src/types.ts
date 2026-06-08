@@ -68,6 +68,11 @@ export interface EslintAccess {
   failureReason?: string;
 }
 
+export interface SourceEntries {
+  entries: string[];
+  ignorePatterns: string[];
+}
+
 export interface EslintConfigAnalysis {
   status: CollectionStatus;
   analyzedFiles: string[];

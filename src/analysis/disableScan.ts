@@ -1,22 +1,40 @@
 import path from "node:path";
 import fg from "fast-glob";
-import type { EslintDisableAnalysis, FileSummaryItem } from "../types.js";
+import type { EslintDisableAnalysis, FileSummaryItem, SourceEntries } from "../types.js";
 import { readTextFile } from "../utils/fs.js";
 
 const DISABLE_PATTERN = /eslint-disable(?<modifier>-next-line|-line)?(?<rules>[^\n\r*]*)/g;
-const SOURCE_PATTERN = "src/**/*.{js,jsx,ts,tsx,vue}";
+const SOURCE_FILE_EXTENSIONS = "{js,jsx,ts,tsx,vue}";
 
-export async function scanEslintDisable(cwd: string): Promise<EslintDisableAnalysis> {
-  const files = await fg(SOURCE_PATTERN, {
-    cwd,
-    onlyFiles: true,
-    unique: true
-  });
+export async function scanEslintDisable(cwd: string, sourceEntries: SourceEntries): Promise<EslintDisableAnalysis> {
+  const scannedDirectory = sourceEntries.entries.join(", ");
+  if (sourceEntries.entries.length === 0) {
+    return {
+      status: "skipped",
+      scannedDirectory,
+      totalDisableCount: 0,
+      fileLevelDisableCount: 0,
+      disableWithoutRuleCount: 0,
+      broadDisableCount: 0,
+      topFiles: [],
+      findings: ["no_source_entries"]
+    };
+  }
+
+  const files = await fg(
+    sourceEntries.entries.map((entry) => `${entry}/**/*.${SOURCE_FILE_EXTENSIONS}`),
+    {
+      cwd,
+      onlyFiles: true,
+      unique: true,
+      ignore: sourceEntries.ignorePatterns
+    }
+  );
 
   if (files.length === 0) {
     return {
       status: "skipped",
-      scannedDirectory: "src",
+      scannedDirectory,
       totalDisableCount: 0,
       fileLevelDisableCount: 0,
       disableWithoutRuleCount: 0,
@@ -70,7 +88,7 @@ export async function scanEslintDisable(cwd: string): Promise<EslintDisableAnaly
 
   return {
     status: "success",
-    scannedDirectory: "src",
+    scannedDirectory,
     totalDisableCount,
     fileLevelDisableCount,
     disableWithoutRuleCount,

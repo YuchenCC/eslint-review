@@ -1,7 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { createLogger, type Logger } from "../logger.js";
-import type { EslintAccess, LintExecution } from "../types.js";
+import type { EslintAccess, LintExecution, SourceEntries } from "../types.js";
 import { runCommand } from "../utils/commands.js";
 import { pathExists } from "../utils/fs.js";
 
@@ -13,6 +13,7 @@ export interface ExecuteLintInput {
   outputDirectory: string;
   timeoutSeconds: number;
   eslintAccess: EslintAccess;
+  sourceEntries: SourceEntries;
   rawEslintReport?: boolean;
   logger?: Logger;
 }
@@ -22,6 +23,7 @@ export async function executeLint({
   outputDirectory,
   timeoutSeconds,
   eslintAccess,
+  sourceEntries,
   rawEslintReport = false,
   logger = createLogger()
 }: ExecuteLintInput): Promise<LintExecution> {
@@ -37,10 +39,22 @@ export async function executeLint({
     };
   }
 
+  if (sourceEntries.entries.length === 0) {
+    logger.info("Skipping ESLint execution because no source entries were discovered");
+    return {
+      status: "skipped",
+      command: "",
+      timeoutSeconds,
+      exitCode: null,
+      durationMs: null,
+      skippedReason: "no_source_entries"
+    };
+  }
+
   await mkdir(path.join(cwd, outputDirectory), { recursive: true });
   const summaryFormatterPath = await emitSummaryFormatter({ cwd, outputDirectory });
   const summaryPath = path.join(outputDirectory, "eslint-summary.json");
-  const args = ["eslint", ".", "-f", summaryFormatterPath, "-o", summaryPath];
+  const args = ["eslint", ...sourceEntries.entries, "-f", summaryFormatterPath, "-o", summaryPath];
   const commandText = `npx ${args.join(" ")}`;
   logger.command(commandText);
 
@@ -76,7 +90,7 @@ export async function executeLint({
       logger.error("ESLint completed but summary output was not generated");
     }
     const rawEslintReportGenerated = rawEslintReport
-      ? await emitRawEslintReport({ cwd, outputDirectory, timeoutSeconds, logger })
+      ? await emitRawEslintReport({ cwd, outputDirectory, timeoutSeconds, sourceEntries, logger })
       : false;
     return {
       status: "success",
@@ -261,15 +275,17 @@ async function emitRawEslintReport({
   cwd,
   outputDirectory,
   timeoutSeconds,
+  sourceEntries,
   logger
 }: {
   cwd: string;
   outputDirectory: string;
   timeoutSeconds: number;
+  sourceEntries: SourceEntries;
   logger: Logger;
 }): Promise<boolean> {
   const reportPath = path.join(outputDirectory, "eslint-report.json");
-  const args = ["eslint", ".", "-f", "json", "-o", reportPath];
+  const args = ["eslint", ...sourceEntries.entries, "-f", "json", "-o", reportPath];
   const commandText = `npx ${args.join(" ")}`;
   logger.command(commandText);
 

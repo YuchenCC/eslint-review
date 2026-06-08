@@ -2,7 +2,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import fg from "fast-glob";
 import { createLogger, type Logger } from "../logger.js";
-import type { EslintAccess, EslintResolvedConfig } from "../types.js";
+import type { EslintAccess, EslintResolvedConfig, SourceEntries } from "../types.js";
 import { runCommand } from "../utils/commands.js";
 
 export interface CollectResolvedEslintConfigInput {
@@ -10,16 +10,18 @@ export interface CollectResolvedEslintConfigInput {
   outputDirectory: string;
   timeoutSeconds: number;
   eslintAccess: EslintAccess;
+  sourceEntries: SourceEntries;
   logger?: Logger;
 }
 
-const SOURCE_FILE_PATTERN = "**/*.{js,cjs,mjs,jsx,ts,cts,mts,tsx,vue}";
+const SOURCE_FILE_EXTENSIONS = "{js,cjs,mjs,jsx,ts,cts,mts,tsx,vue}";
 
 export async function collectResolvedEslintConfig({
   cwd,
   outputDirectory,
   timeoutSeconds,
   eslintAccess,
+  sourceEntries,
   logger = createLogger()
 }: CollectResolvedEslintConfigInput): Promise<EslintResolvedConfig> {
   const outputPath = path.join(outputDirectory, "eslint-config.json");
@@ -32,7 +34,15 @@ export async function collectResolvedEslintConfig({
     });
   }
 
-  const targetFile = await findConfigTargetFile(cwd, outputDirectory);
+  if (sourceEntries.entries.length === 0) {
+    return skippedConfig({
+      timeoutSeconds,
+      outputPath,
+      skippedReason: "no_source_entries"
+    });
+  }
+
+  const targetFile = await findConfigTargetFile(cwd, sourceEntries);
   if (!targetFile) {
     return skippedConfig({
       timeoutSeconds,
@@ -106,13 +116,16 @@ export async function collectResolvedEslintConfig({
   };
 }
 
-async function findConfigTargetFile(cwd: string, outputDirectory: string): Promise<string | undefined> {
-  const [targetFile] = await fg(SOURCE_FILE_PATTERN, {
-    cwd,
-    absolute: false,
-    onlyFiles: true,
-    ignore: ["**/node_modules/**", `${outputDirectory}/**`]
-  });
+async function findConfigTargetFile(cwd: string, sourceEntries: SourceEntries): Promise<string | undefined> {
+  const [targetFile] = await fg(
+    sourceEntries.entries.map((entry) => `${entry}/**/*.${SOURCE_FILE_EXTENSIONS}`),
+    {
+      cwd,
+      absolute: false,
+      onlyFiles: true,
+      ignore: sourceEntries.ignorePatterns
+    }
+  );
   return targetFile;
 }
 

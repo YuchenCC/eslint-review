@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import { executeLint } from "../src/lint/execute.js";
 import { parseEslintSummary } from "../src/lint/parse.js";
 import { buildInstallCommand, diagnoseMissingDependency } from "../src/lint/recovery.js";
-import type { EslintAccess } from "../src/types.js";
+import type { EslintAccess, SourceEntries } from "../src/types.js";
 import { runCommand } from "../src/utils/commands.js";
 
 vi.mock("../src/utils/commands.js", () => ({
@@ -27,6 +27,19 @@ const connectedEslintAccess: EslintAccess = {
   lintScripts: {
     lint: "eslint ."
   }
+};
+
+const sourceEntries: SourceEntries = {
+  entries: ["src"],
+  ignorePatterns: [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/build/**",
+    ".eslint-checker/**",
+    "public/**",
+    "**/public/**",
+    "**/*.min.js"
+  ]
 };
 
 describe("lint execution", () => {
@@ -51,7 +64,8 @@ describe("lint execution", () => {
         cwd: "fixtures/no-package",
         outputDirectory: ".eslint-checker",
         timeoutSeconds: 1,
-        eslintAccess
+        eslintAccess,
+        sourceEntries
       })
     ).resolves.toMatchObject({
       status: "skipped",
@@ -59,6 +73,24 @@ describe("lint execution", () => {
       exitCode: null,
       skippedReason: "eslint_not_connected"
     });
+  });
+
+  test("skips execution when no source entries are discovered", async () => {
+    await expect(
+      executeLint({
+        cwd: "fixtures/no-package",
+        outputDirectory: ".eslint-checker",
+        timeoutSeconds: 1,
+        eslintAccess: connectedEslintAccess,
+        sourceEntries: { ...sourceEntries, entries: [] }
+      })
+    ).resolves.toMatchObject({
+      status: "skipped",
+      command: "",
+      exitCode: null,
+      skippedReason: "no_source_entries"
+    });
+    expect(mockedRunCommand).not.toHaveBeenCalled();
   });
 
   test("runs ESLint with the summary formatter by default", async () => {
@@ -81,6 +113,7 @@ describe("lint execution", () => {
           outputDirectory: ".eslint-checker",
           timeoutSeconds: 10,
           eslintAccess: connectedEslintAccess,
+          sourceEntries,
           logger
         })
       ).resolves.toMatchObject({
@@ -96,7 +129,7 @@ describe("lint execution", () => {
       expect(mockedRunCommand).toHaveBeenCalledWith({
         cwd: tempDirectory,
         command: "npx",
-        args: ["eslint", ".", "-f", summaryFormatterPath, "-o", path.join(".eslint-checker", "eslint-summary.json")],
+        args: ["eslint", "src", "-f", summaryFormatterPath, "-o", path.join(".eslint-checker", "eslint-summary.json")],
         streamOutput: true,
         timeoutMs: 10000
       });
@@ -124,7 +157,8 @@ describe("lint execution", () => {
         cwd: tempDirectory,
         outputDirectory: ".eslint-checker",
         timeoutSeconds: 10,
-        eslintAccess: connectedEslintAccess
+        eslintAccess: connectedEslintAccess,
+        sourceEntries
       });
 
       const summaryFormatterPath = mockedRunCommand.mock.calls[0]?.[0].args[3];
@@ -189,6 +223,7 @@ describe("lint execution", () => {
           outputDirectory: ".eslint-checker",
           timeoutSeconds: 10,
           eslintAccess: connectedEslintAccess,
+          sourceEntries,
           rawEslintReport: true,
           logger
         })
@@ -205,13 +240,13 @@ describe("lint execution", () => {
       expect(mockedRunCommand).toHaveBeenNthCalledWith(2, {
         cwd: tempDirectory,
         command: "npx",
-        args: ["eslint", ".", "-f", "json", "-o", path.join(".eslint-checker", "eslint-report.json")],
+        args: ["eslint", "src", "-f", "json", "-o", path.join(".eslint-checker", "eslint-report.json")],
         streamOutput: true,
         timeoutMs: 10000
       });
       expect(logger.commands).toHaveLength(2);
       expect(normalizePath(logger.commands[0] ?? "")).toContain("/.eslint-checker/summaryFormatter.cjs -o .eslint-checker/eslint-summary.json");
-      expect(normalizePath(logger.commands[1] ?? "")).toBe("npx eslint . -f json -o .eslint-checker/eslint-report.json");
+      expect(normalizePath(logger.commands[1] ?? "")).toBe("npx eslint src -f json -o .eslint-checker/eslint-report.json");
       expect(logger.errors).toEqual(["raw formatter failed"]);
     } finally {
       await rm(tempDirectory, { recursive: true, force: true });
@@ -236,6 +271,7 @@ describe("lint execution", () => {
           outputDirectory: ".eslint-checker",
           timeoutSeconds: 10,
           eslintAccess: connectedEslintAccess,
+          sourceEntries,
           logger
         })
       ).resolves.toMatchObject({
@@ -279,6 +315,7 @@ describe("lint execution", () => {
         outputDirectory: ".eslint-checker",
         timeoutSeconds: 60,
         eslintAccess: connectedEslintAccess,
+        sourceEntries,
         logger
       });
 

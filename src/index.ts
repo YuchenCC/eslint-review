@@ -4,6 +4,7 @@ import { scanEslintDisable } from "./analysis/disableScan.js";
 import { collectResolvedEslintConfig } from "./analysis/resolvedConfig.js";
 import { detectEslintAccess } from "./discovery/eslintAccess.js";
 import { discoverProject } from "./discovery/project.js";
+import { discoverSourceEntries } from "./discovery/sourceEntries.js";
 import { createLogger } from "./logger.js";
 import { executeLint } from "./lint/execute.js";
 import { parseEslintSummary } from "./lint/parse.js";
@@ -20,12 +21,13 @@ export async function runChecker({ cwd, options }: RunCheckerInput): Promise<Che
   const logger = createLogger({ console: options.console });
   logger.info("[1/7] Initializing check");
   logger.info("[2/7] Discovering project and static ESLint context");
-  const [projectDiscovery, eslintAccess, eslintConfigAnalysis, eslintDisableAnalysis] = await Promise.all([
+  const [projectDiscovery, eslintAccess, eslintConfigAnalysis, sourceEntries] = await Promise.all([
     discoverProject(cwd),
     detectEslintAccess(cwd),
     analyzeEslintConfig(cwd),
-    scanEslintDisable(cwd)
+    discoverSourceEntries(cwd, outputDirectory)
   ]);
+  const eslintDisableAnalysis = await scanEslintDisable(cwd, sourceEntries);
   const normalizedTimeoutSeconds = Number.isNaN(timeoutSeconds) ? 120 : timeoutSeconds;
   logger.info("Checker started");
   let lintRecovery: LintRecovery = {
@@ -43,6 +45,7 @@ export async function runChecker({ cwd, options }: RunCheckerInput): Promise<Che
     outputDirectory,
     timeoutSeconds: normalizedTimeoutSeconds,
     eslintAccess,
+    sourceEntries,
     logger
   });
 
@@ -62,6 +65,7 @@ export async function runChecker({ cwd, options }: RunCheckerInput): Promise<Che
           outputDirectory,
           timeoutSeconds: normalizedTimeoutSeconds,
           eslintAccess,
+          sourceEntries,
           rawEslintReport: options.rawEslintReport,
           logger
         });
@@ -73,6 +77,7 @@ export async function runChecker({ cwd, options }: RunCheckerInput): Promise<Che
       outputDirectory,
       timeoutSeconds: normalizedTimeoutSeconds,
       eslintAccess,
+      sourceEntries,
       rawEslintReport: options.rawEslintReport,
       packageManager: projectDiscovery.packageManager,
       failedExecution: lintExecution,

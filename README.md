@@ -16,7 +16,6 @@ Useful options:
 - `--no-recovery`: disable bounded missing dependency recovery.
 - `--raw-eslint-report`: also emit full raw ESLint JSON for debugging. This is slower and can be large.
 - `--system`, `--center`, `--owner`: attach report metadata.
-- `--for-iflycode`: emit artifacts for iflycode report generation.
 
 Source discovery:
 
@@ -35,12 +34,12 @@ Generated artifacts:
 
 The checker reports both static config quality and resolved ESLint config. `eslintConfigAnalysis` is a static governance analysis of config files and `package.json#eslintConfig`, focused on disabled rules and weakened standard config. `eslintResolvedConfig` records whether the CLI could ask ESLint for the effective config and, when successful, writes that merged runtime config to `.eslint-checker/eslint-config.json`.
 
-## iflycode Skill Usage
+## ESLint Governance Report Skill Usage
 
-Use `skills/iflycode-eslint-report/SKILL.md` to run the checker in a business project and generate a formal report. The Skill must use `.eslint-checker/report.json` as the source of truth and must not invent factual counts or statuses.
+Use `skills/eslint-governance-report/SKILL.md` to run the checker in a business project and generate a formal governance report. The Skill must use `.eslint-checker/report.json` as the source of truth and must not invent factual counts or statuses.
 
 Typical command:
 
 ```bash
-npx @sunny/eslint-checker --mode full --for-iflycode
+npx @sunny/eslint-checker --mode full
 ```

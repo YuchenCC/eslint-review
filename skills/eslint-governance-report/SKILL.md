@@ -1,9 +1,9 @@
 ---
-name: iflycode-eslint-report
-description: Use when generating an iflycode ESLint governance report for a JavaScript or TypeScript business project from @sunny/eslint-checker artifacts.
+name: eslint-governance-report
+description: Use when generating an ESLint governance report for a JavaScript or TypeScript business project from @sunny/eslint-checker artifacts.
 ---
 
-# iflycode ESLint Report
+# ESLint Governance Report
 
 当需要为 JavaScript 或 TypeScript 工程产出 ESLint 治理检查报告时，使用此 workflow。
 
@@ -19,7 +19,7 @@ description: Use when generating an iflycode ESLint governance report for a Java
 如果 `.eslint-checker` 已存在，必须先让用户选择本次数据来源：
 
 1. 重新生成：删除整个 `.eslint-checker` 目录后重新运行 checker，确保报告来自完整新跑的一轮流程。
-2. 使用现有结果：不删除 `.eslint-checker`，不重新运行 checker，直接基于现有 `.eslint-checker/report.json` 生成 `.eslint-checker/iflycode-key-data.json` 和 `.eslint-checker/iflycode-eslint-governance-report.md`。
+2. 使用现有结果：不删除 `.eslint-checker`，不重新运行 checker，直接基于现有 `.eslint-checker/report.json` 生成 `.eslint-checker/key-data.json` 和 `.eslint-checker/eslint-governance-report.md`。
 
 如果用户选择使用现有结果，必须先确认 `.eslint-checker/report.json` 是否存在。若缺失，仍必须按固定结构生成 key data 和 Markdown，但所有机器采集事实字段标记为未采集，并在 `9.3 未采集项` 记录原因；也可以让用户改选重新生成。
 
@@ -41,14 +41,14 @@ Bash:
 rm -rf .eslint-checker
 ```
 
-删除旧目录后，再执行 `npx @sunny/eslint-checker --mode full --for-iflycode`。
+删除旧目录后，再执行 `npx @sunny/eslint-checker --mode full`。
 
 ## Run Checker
 
 仅当 `.eslint-checker` 不存在，或用户选择重新生成时，在业务工程根目录执行：
 
 ```bash
-npx @sunny/eslint-checker --mode full --for-iflycode
+npx @sunny/eslint-checker --mode full
 ```
 
 full mode 执行期间保持终端可见。checker 会在 ESLint 子进程产生输出时实时转发，并在大工程长时间运行时周期性打印进度信息。
@@ -57,7 +57,7 @@ full mode 执行期间保持终端可见。checker 会在 ESLint 子进程产生
 
 ```bash
 npm install -D @sunny/eslint-checker
-npx eslint-checker --mode full --for-iflycode
+npx eslint-checker --mode full
 ```
 
 如果 `npm install -D @sunny/eslint-checker` 失败：
@@ -67,7 +67,7 @@ npx eslint-checker --mode full --for-iflycode
 
 ```bash
 npm install -D "<用户提供的eslint-checker本地路径>"
-npx eslint-checker --mode full --for-iflycode
+npx eslint-checker --mode full
 ```
 
 本地路径可以是 checker 工程目录或已打包的 `.tgz` 文件。不要猜测路径；如果用户未提供，先询问。安装前不要删除或覆盖用户提供路径中的文件。
@@ -78,8 +78,8 @@ npx eslint-checker --mode full --for-iflycode
 
 解析完成后输出两份材料：
 
-1. `.eslint-checker/iflycode-key-data.json`：关键数据，用于后续多工程汇总。
-2. `.eslint-checker/iflycode-eslint-governance-report.md`：正式交付文档，使用固定章节模板。
+1. `.eslint-checker/key-data.json`：关键数据，用于后续多工程汇总。
+2. `.eslint-checker/eslint-governance-report.md`：正式交付文档，使用固定章节模板。
 
 Markdown 文档是正式交付物，不再生成其他文档格式。
 
@@ -87,7 +87,7 @@ Markdown 文档是正式交付物，不再生成其他文档格式。
 
 多个工程的最终产物必须保持结构一致，便于批量汇总和横向比较。
 
-- 无论 checker 成功、部分成功、失败、超时、用户复用现有结果，或 `.eslint-checker/report.json` 缺失，都必须生成同一套产物：`.eslint-checker/iflycode-key-data.json` 和 `.eslint-checker/iflycode-eslint-governance-report.md`。
+- 无论 checker 成功、部分成功、失败、超时、用户复用现有结果，或 `.eslint-checker/report.json` 缺失，都必须生成同一套产物：`.eslint-checker/key-data.json` 和 `.eslint-checker/eslint-governance-report.md`。
 - key data 必须保留固定 top-level schema 和固定字段集合。不得因为字段缺失、artifact 未生成、lint 未执行或项目未接入 ESLint 而删除字段。
 - Markdown 必须保留 `0` 到 `9` 的固定章节、固定 subsection 和固定顺序。不得因为无数据而删除章节、合并章节或改变标题。
 - 缺失字符串字段使用 `unknown`；未采集数值字段使用 `null`；列表无数据使用 `[]`；可选 artifact 不存在时字段保留为 `null`。
@@ -153,7 +153,7 @@ Rules:
 
 ## Unknown Field Completion
 
-在生成 `.eslint-checker/iflycode-key-data.json` 和 `.eslint-checker/iflycode-eslint-governance-report.md` 前，必须先识别会输出为 `unknown` 的字段，并逐项通过交互式输入引导用户填写。
+在生成 `.eslint-checker/key-data.json` 和 `.eslint-checker/eslint-governance-report.md` 前，必须先识别会输出为 `unknown` 的字段，并逐项通过交互式输入引导用户填写。
 
 Completion rules:
 
@@ -172,7 +172,7 @@ Recommended prompt format:
 
 ## Key Data Artifact
 
-生成 `.eslint-checker/iflycode-key-data.json`，用于后续多工程汇总。字段优先从 `.eslint-checker/report.json` 派生；若 `report.json` 缺失，则从命令失败上下文、`.eslint-checker/lint-log.txt` 和用户提供的业务元数据中填充可确认字段，其余字段使用固定 fallback value。
+生成 `.eslint-checker/key-data.json`，用于后续多工程汇总。字段优先从 `.eslint-checker/report.json` 派生；若 `report.json` 缺失，则从命令失败上下文、`.eslint-checker/lint-log.txt` 和用户提供的业务元数据中填充可确认字段，其余字段使用固定 fallback value。
 
 Required top-level shape and fields:
 
@@ -324,7 +324,7 @@ Subsections:
 
 如果 `.eslint-checker/report.json` 缺失：
 
-- 仍生成 `.eslint-checker/iflycode-key-data.json` 和 `.eslint-checker/iflycode-eslint-governance-report.md`。
+- 仍生成 `.eslint-checker/key-data.json` 和 `.eslint-checker/eslint-governance-report.md`。
 - 两份产物必须保持与正常工程相同的 schema、章节、subsection 和顺序。
 - 基于 `.eslint-checker/lint-log.txt`、command failure context 和用户提供的业务元数据填充可确认字段。
 - 机器采集事实字段标记为 `not_collected`、`unknown`、`null` 或 `[]`，并记录 failure cause。

@@ -82,7 +82,6 @@ describe("report artifacts", () => {
           mode: "access",
           output: ".eslint-checker",
           timeout: "1",
-          forIflycode: false,
           recovery: true
         }
       });
@@ -175,7 +174,6 @@ describe("report artifacts", () => {
           mode: "access",
           output: ".eslint-checker",
           timeout: "5",
-          forIflycode: false,
           recovery: true
         }
       });
@@ -221,7 +219,6 @@ describe("report artifacts", () => {
           mode: "full",
           output: ".eslint-checker",
           timeout: "5",
-          forIflycode: false,
           recovery: true
         }
       });
@@ -269,7 +266,6 @@ describe("report artifacts", () => {
           mode: "full",
           output: ".eslint-checker",
           timeout: "5",
-          forIflycode: false,
           recovery: true
         }
       });
@@ -305,7 +301,6 @@ describe("report artifacts", () => {
           mode: "full",
           output: ".eslint-checker",
           timeout: "5",
-          forIflycode: false,
           recovery: true,
           rawEslintReport: true
         }
@@ -336,7 +331,6 @@ describe("report artifacts", () => {
           mode: "full",
           output: ".eslint-checker",
           timeout: "5",
-          forIflycode: false,
           recovery: true,
           rawEslintReport: true
         }
@@ -366,7 +360,6 @@ describe("report artifacts", () => {
           mode: "full",
           output: ".eslint-checker",
           timeout: "5",
-          forIflycode: false,
           recovery: true
         }
       });
@@ -402,7 +395,6 @@ describe("report artifacts", () => {
           mode: "access",
           output: ".eslint-checker",
           timeout: "1",
-          forIflycode: false,
           recovery: true,
           console: true
         }

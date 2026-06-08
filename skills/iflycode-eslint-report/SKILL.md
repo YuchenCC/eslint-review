@@ -1,6 +1,6 @@
 ---
 name: iflycode-eslint-report
-description: Run @sunny/eslint-checker in a business project and generate a formal ESLint governance Markdown report and aggregation data from report.json only.
+description: Use when generating an iflycode ESLint governance report for a JavaScript or TypeScript business project from @sunny/eslint-checker artifacts.
 ---
 
 # iflycode ESLint Report
@@ -12,28 +12,20 @@ description: Run @sunny/eslint-checker in a business project and generate a form
 - 业务工程根目录。若用户未提供，先询问路径。
 - 可选报告元数据：system、center、owner。
 
-## Run Checker
+## Existing Output Choice
 
-在业务工程根目录执行：
+每次准备报告前，必须先检查业务工程根目录下是否存在 `.eslint-checker`。
 
-```bash
-npx @sunny/eslint-checker --mode full --for-iflycode
-```
+如果 `.eslint-checker` 已存在，必须先让用户选择本次数据来源：
 
-full mode 执行期间保持终端可见。checker 会在 ESLint 子进程产生输出时实时转发，并在大工程长时间运行时周期性打印进度信息。
+1. 重新生成：删除整个 `.eslint-checker` 目录后重新运行 checker，确保报告来自完整新跑的一轮流程。
+2. 使用现有结果：不删除 `.eslint-checker`，不重新运行 checker，直接基于现有 `.eslint-checker/report.json` 生成 `.eslint-checker/iflycode-key-data.json` 和 `.eslint-checker/iflycode-eslint-governance-report.md`。
 
-如果 scoped package 无法直接执行，安装后执行：
+如果用户选择使用现有结果，必须先确认 `.eslint-checker/report.json` 是否存在。若缺失，仍必须按固定结构生成 key data 和 Markdown，但所有机器采集事实字段标记为未采集，并在 `9.3 未采集项` 记录原因；也可以让用户改选重新生成。
 
-```bash
-npm install -D @sunny/eslint-checker
-npx eslint-checker --mode full --for-iflycode
-```
+如果 `.eslint-checker` 不存在，直接运行 checker。
 
-等待 `.eslint-checker/report.json` 生成。若缺失，检查 `.eslint-checker/lint-log.txt`，并仅基于命令失败上下文和日志产出检查未完成报告。
-
-## Clean Previous Output
-
-每次运行 checker 前，必须先检查业务工程根目录下是否存在 `.eslint-checker`。若存在，必须删除整个 `.eslint-checker` 目录，确保本次报告来自完整新跑的一轮流程。
+重新生成时删除旧目录：
 
 PowerShell:
 
@@ -49,7 +41,38 @@ Bash:
 rm -rf .eslint-checker
 ```
 
-不得复用旧的 `.eslint-checker/report.json` 或旧报告产物。删除旧目录后，再执行 `npx @sunny/eslint-checker --mode full --for-iflycode`。
+删除旧目录后，再执行 `npx @sunny/eslint-checker --mode full --for-iflycode`。
+
+## Run Checker
+
+仅当 `.eslint-checker` 不存在，或用户选择重新生成时，在业务工程根目录执行：
+
+```bash
+npx @sunny/eslint-checker --mode full --for-iflycode
+```
+
+full mode 执行期间保持终端可见。checker 会在 ESLint 子进程产生输出时实时转发，并在大工程长时间运行时周期性打印进度信息。
+
+如果 scoped package 无法直接执行，先尝试安装后执行：
+
+```bash
+npm install -D @sunny/eslint-checker
+npx eslint-checker --mode full --for-iflycode
+```
+
+如果 `npm install -D @sunny/eslint-checker` 失败：
+
+- 若出现 `401 Unauthorized`、`E401` 或需要认证的 registry 错误，提示用户先执行 `npm login`，登录到当前 registry 后再重试 `npm install -D @sunny/eslint-checker`。
+- 若出现 `404 Not Found`、私有源不可访问、包不存在，或用户无法完成 registry 认证，必须让用户手工输入可安装的本地路径。用户提供路径后，在业务工程根目录执行本地安装：
+
+```bash
+npm install -D "<用户提供的eslint-checker本地路径>"
+npx eslint-checker --mode full --for-iflycode
+```
+
+本地路径可以是 checker 工程目录或已打包的 `.tgz` 文件。不要猜测路径；如果用户未提供，先询问。安装前不要删除或覆盖用户提供路径中的文件。
+
+等待 `.eslint-checker/report.json` 生成。若缺失，检查 `.eslint-checker/lint-log.txt`，并按固定结构基于命令失败上下文和日志产出检查未完成的 key data 与 Markdown report。
 
 ## Output Materials
 
@@ -60,15 +83,25 @@ rm -rf .eslint-checker
 
 Markdown 文档是正式交付物，不再生成其他文档格式。
 
+## Structural Consistency Rules
+
+多个工程的最终产物必须保持结构一致，便于批量汇总和横向比较。
+
+- 无论 checker 成功、部分成功、失败、超时、用户复用现有结果，或 `.eslint-checker/report.json` 缺失，都必须生成同一套产物：`.eslint-checker/iflycode-key-data.json` 和 `.eslint-checker/iflycode-eslint-governance-report.md`。
+- key data 必须保留固定 top-level schema 和固定字段集合。不得因为字段缺失、artifact 未生成、lint 未执行或项目未接入 ESLint 而删除字段。
+- Markdown 必须保留 `0` 到 `9` 的固定章节、固定 subsection 和固定顺序。不得因为无数据而删除章节、合并章节或改变标题。
+- 缺失字符串字段使用 `unknown`；未采集数值字段使用 `null`；列表无数据使用 `[]`；可选 artifact 不存在时字段保留为 `null`。
+- 未采集或失败状态在 key data 中保留机器可汇总值，例如 `not_collected`、`skipped`、`failed` 和 recorded failure reason；在 Markdown 中展示为中文，并在 `9.3 未采集项` 说明原因。
+
 ## Formal Report Rules
 
-- 将 `.eslint-checker/report.json` 作为 factual counts、statuses、package data、lint evidence、recommendations 的唯一事实来源。
+- 当 `.eslint-checker/report.json` 存在时，将其作为 factual counts、statuses、package data、lint evidence、recommendations 的唯一事实来源；当它缺失时，只能使用失败上下文和日志填充失败原因与未采集状态，不得补造机器采集事实。
 - 不得编造 lint counts、disabled-rule counts、package data、execution status 或不存在的 evidence。
-- 事实缺失时使用 `unknown`、`not_collected`、`skipped`、`not_applicable` 或已记录的 failure reason。
+- 事实缺失时使用固定 fallback value：`unknown`、`not_collected`、`skipped`、`not_applicable`、`null`、`[]` 或已记录的 failure reason。
 - 数值字段已知时必须是 number；未采集时使用 `null`，不要用中文描述替代数值。
 - narrative content 使用中文；只有技术类专业术语、关键技术栈、字段名、artifact 名、ruleId、command、路径、包名可以使用 English。
 - 必须提及默认产物：`report.json`、`summary.md`、`eslint-summary.json`、`eslint-config.json`、`lint-log.txt`。
-- 仅当 `artifacts.eslintReportJson` 存在时提及 `eslint-report.json`；它是 opt-in raw debug artifact。
+- `eslint-report.json` 是 opt-in raw debug artifact。key data 中必须保留该字段；不存在时写 `null`。Markdown 产物清单中必须保留该行并说明 `默认未生成` 或 `未生成`。
 - 使用 `lintEvidence` 写代表性问题示例，但不得扩展到记录样例之外。
 - 区分 `eslintConfigAnalysis` 与 `eslintResolvedConfig`：前者是 static governance analysis，后者或 `eslint-config.json` 是 ESLint `--print-config` 产出的 effective config。
 
@@ -139,9 +172,9 @@ Recommended prompt format:
 
 ## Key Data Artifact
 
-生成 `.eslint-checker/iflycode-key-data.json`，用于后续多工程汇总。字段必须从 `.eslint-checker/report.json` 派生。
+生成 `.eslint-checker/iflycode-key-data.json`，用于后续多工程汇总。字段优先从 `.eslint-checker/report.json` 派生；若 `report.json` 缺失，则从命令失败上下文、`.eslint-checker/lint-log.txt` 和用户提供的业务元数据中填充可确认字段，其余字段使用固定 fallback value。
 
-Required top-level shape:
+Required top-level shape and fields:
 
 ```json
 {
@@ -160,7 +193,7 @@ Required top-level shape:
 }
 ```
 
-Recommended fields:
+Required fields:
 
 | Area | Fields |
 | --- | --- |
@@ -173,7 +206,9 @@ Recommended fields:
 | lintResult | `errorCount`, `warningCount`, `fixableErrorCount`, `fixableWarningCount`, `topRules`, `topFiles` |
 | risk | `level`, `reasons`, `governanceImpact`, `deliveryImpact` |
 | recommendations | data-supported action list |
-| artifacts | `reportJson`, `summaryMd`, `eslintSummaryJson`, `eslintConfigJson`, `lintLogTxt`, optional `eslintReportJson` |
+| artifacts | `reportJson`, `summaryMd`, `eslintSummaryJson`, `eslintConfigJson`, `lintLogTxt`, `eslintReportJson` |
+
+即使某个 area 没有采集到任何事实，也必须保留该 area 和字段名。不得用空对象替代 required fields；字段值按 Structural Consistency Rules 使用 `unknown`、`null`、`[]` 或状态值。
 
 ## Markdown Report Template
 
@@ -187,7 +222,7 @@ Required content:
 - 项目名称
 - system、center、owner；未提供时写 `unknown`
 - 检查时间；缺失时写 `unknown`
-- 数据来源声明：本报告基于 `.eslint-checker/report.json` 生成
+- 数据来源声明：若 `report.json` 存在，写 `本报告基于 .eslint-checker/report.json 生成`；若缺失，写 `本报告基于检查失败上下文和 .eslint-checker/lint-log.txt 生成，机器采集事实未完成`
 
 ### 1. 执行摘要
 
@@ -253,7 +288,7 @@ Subsections:
 5. `6.5 Top rules`
 6. `6.6 Top files`
 
-当 lint execution 为 `skipped`、`failed` 或 `timeout` 时，结果 count 保持 not collected，并说明原因。
+当 lint execution 为 `skipped`、`failed` 或 `timeout` 时，保留本章节全部 subsection；结果 count 使用 `null`，状态展示为未采集或失败，并说明原因。
 
 ### 7. 代表性问题与风险
 
@@ -289,12 +324,14 @@ Subsections:
 
 如果 `.eslint-checker/report.json` 缺失：
 
-- 不生成 `.eslint-checker/iflycode-key-data.json`，除非存在足够的结构化 failure metadata。
-- 仅基于 `.eslint-checker/lint-log.txt` 和 command failure context 生成检查未完成的 Markdown 报告。
-- factual fields 标记为 `not_collected`，并说明 failure cause。
+- 仍生成 `.eslint-checker/iflycode-key-data.json` 和 `.eslint-checker/iflycode-eslint-governance-report.md`。
+- 两份产物必须保持与正常工程相同的 schema、章节、subsection 和顺序。
+- 基于 `.eslint-checker/lint-log.txt`、command failure context 和用户提供的业务元数据填充可确认字段。
+- 机器采集事实字段标记为 `not_collected`、`unknown`、`null` 或 `[]`，并记录 failure cause。
+- 执行摘要写 `检查未完成`，`9.3 未采集项` 列出所有未采集 area 和原因。
 
 如果 `.eslint-checker/report.json` 存在但 optional fields 缺失：
 
 - 仍生成 key data 和 Markdown report。
-- 保留完整章节结构。
+- 保留完整 schema 和章节结构。
 - 使用稳定 fallback values，并在 `9.3 未采集项` 说明缺失原因。

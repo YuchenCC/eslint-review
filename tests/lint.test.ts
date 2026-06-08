@@ -5,7 +5,7 @@ import path from "node:path";
 import { tmpdir } from "node:os";
 import { executeLint } from "../src/lint/execute.js";
 import { parseEslintSummary } from "../src/lint/parse.js";
-import { buildInstallCommand, diagnoseMissingDependency } from "../src/lint/recovery.js";
+import { buildInstallCommand, diagnoseMissingDependency, recoverAndRetry } from "../src/lint/recovery.js";
 import type { EslintAccess, SourceEntries } from "../src/types.js";
 import { runCommand } from "../src/utils/commands.js";
 
@@ -290,6 +290,74 @@ describe("lint execution", () => {
     }
   });
 
+  test("does not use non-blocking Browserslist notices as the ESLint failure reason", async () => {
+    const tempDirectory = await mkdtemp(path.join(tmpdir(), "eslint-execute-browserslist-notice-"));
+    try {
+      mockedRunCommand.mockResolvedValueOnce({
+        exitCode: 2,
+        stdout: "ESLint couldn't find the plugin \"react\".",
+        stderr: [
+          "Browserslist: browsers data (caniuse-lite) is 6 months old. Please run:",
+          "  npx update-browserslist-db@latest",
+          "  Why you should do it regularly: https://github.com/browserslist/update-db#readme"
+        ].join("\n"),
+        durationMs: 20,
+        timedOut: false
+      });
+
+      await expect(
+        executeLint({
+          cwd: tempDirectory,
+          outputDirectory: ".eslint-checker",
+          timeoutSeconds: 10,
+          eslintAccess: connectedEslintAccess,
+          sourceEntries
+        })
+      ).resolves.toMatchObject({
+        status: "failed",
+        exitCode: 2,
+        failureReason: "ESLint couldn't find the plugin \"react\"."
+      });
+    } finally {
+      await rm(tempDirectory, { recursive: true, force: true });
+    }
+  });
+
+  test("treats ESLint output as collected when only Browserslist notices accompany a generated summary", async () => {
+    const tempDirectory = await mkdtemp(path.join(tmpdir(), "eslint-execute-browserslist-summary-"));
+    try {
+      await mkdir(path.join(tempDirectory, ".eslint-checker"), { recursive: true });
+      await writeFile(path.join(tempDirectory, ".eslint-checker", "eslint-summary.json"), "{}", "utf8");
+      mockedRunCommand.mockResolvedValueOnce({
+        exitCode: 2,
+        stdout: "",
+        stderr: [
+          "Browserslist: browsers data (caniuse-lite) is 6 months old. Please run:",
+          "  npx update-browserslist-db@latest",
+          "  Why you should do it regularly: https://github.com/browserslist/update-db#readme"
+        ].join("\n"),
+        durationMs: 20,
+        timedOut: false
+      });
+
+      await expect(
+        executeLint({
+          cwd: tempDirectory,
+          outputDirectory: ".eslint-checker",
+          timeoutSeconds: 10,
+          eslintAccess: connectedEslintAccess,
+          sourceEntries
+        })
+      ).resolves.toMatchObject({
+        status: "success",
+        exitCode: 2,
+        durationMs: 20
+      });
+    } finally {
+      await rm(tempDirectory, { recursive: true, force: true });
+    }
+  });
+
   test("logs heartbeat messages while ESLint is still running", async () => {
     vi.useFakeTimers();
     const tempDirectory = await mkdtemp(path.join(tmpdir(), "eslint-execute-progress-"));
@@ -362,6 +430,101 @@ describe("lint execution", () => {
       args: ["add", "-D", "eslint-plugin-vue"],
       text: "pnpm add -D eslint-plugin-vue"
     });
+  });
+
+  test("logs when recovery skips a failure without installable dependency evidence", async () => {
+    const logger = memoryLogger();
+
+    await expect(
+      recoverAndRetry({
+        cwd: "fixtures/vue-eslint",
+        outputDirectory: ".eslint-checker",
+        timeoutSeconds: 10,
+        eslintAccess: connectedEslintAccess,
+        sourceEntries,
+        packageManager: "npm",
+        failedExecution: {
+          status: "failed",
+          command: "npx eslint src -f formatter -o .eslint-checker/eslint-summary.json",
+          timeoutSeconds: 10,
+          exitCode: 2,
+          durationMs: 20,
+          failureReason: "eslint_execution_failed"
+        },
+        logger
+      })
+    ).resolves.toMatchObject({
+      lintRecovery: {
+        status: "skipped",
+        failureReason: "no_installable_missing_dependency"
+      }
+    });
+
+    expect(logger.infos).toContain("Recovery skipped: no installable missing ESLint dependency was detected in the failure output");
+  });
+
+  test("logs recovery diagnosis, install command, and retry result", async () => {
+    const tempDirectory = await mkdtemp(path.join(tmpdir(), "eslint-recovery-logs-"));
+    try {
+      await mkdir(path.join(tempDirectory, "src"), { recursive: true });
+      mockedRunCommand
+        .mockResolvedValueOnce({
+          exitCode: 0,
+          stdout: "",
+          stderr: "",
+          durationMs: 20,
+          timedOut: false
+        })
+        .mockImplementationOnce(async () => {
+          await mkdir(path.join(tempDirectory, ".eslint-checker"), { recursive: true });
+          await writeFile(path.join(tempDirectory, ".eslint-checker", "eslint-summary.json"), "{}", "utf8");
+          return {
+            exitCode: 0,
+            stdout: "",
+            stderr: "",
+            durationMs: 30,
+            timedOut: false
+          };
+        });
+      const logger = memoryLogger();
+
+      await expect(
+        recoverAndRetry({
+          cwd: tempDirectory,
+          outputDirectory: ".eslint-checker",
+          timeoutSeconds: 10,
+          eslintAccess: connectedEslintAccess,
+          sourceEntries,
+          packageManager: "npm",
+          failedExecution: {
+            status: "failed",
+            command: "npx eslint src -f formatter -o .eslint-checker/eslint-summary.json",
+            timeoutSeconds: 10,
+            exitCode: 2,
+            durationMs: 20,
+            failureReason: "ESLint couldn't find the plugin \"react\"."
+          },
+          logger
+        })
+      ).resolves.toMatchObject({
+        lintExecution: {
+          status: "success",
+          exitCode: 0
+        },
+        lintRecovery: {
+          status: "success",
+          installedPackages: ["eslint-plugin-react"],
+          installCommand: "npm install -D eslint-plugin-react"
+        }
+      });
+
+      expect(logger.infos).toContain("Recovery diagnosed missing ESLint dependency packages: eslint-plugin-react");
+      expect(logger.commands).toContain("npm install -D eslint-plugin-react");
+      expect(logger.infos).toContain("Recovery install succeeded; retrying ESLint execution");
+      expect(logger.infos).toContain("Recovery retry finished with status success and exit code 0");
+    } finally {
+      await rm(tempDirectory, { recursive: true, force: true });
+    }
   });
 
   test("parses ESLint summary into lint, file, rule, and evidence summaries", async () => {

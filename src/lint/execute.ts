@@ -83,7 +83,8 @@ export async function executeLint({
     };
   }
 
-  if (result.exitCode === 0 || result.exitCode === 1) {
+  const failureReason = collectBlockingFailureReason(result.stderr, result.stdout);
+  if (result.exitCode === 0 || result.exitCode === 1 || (summaryExists && failureReason === "")) {
     if (summaryExists) {
       logger.info("ESLint summary execution completed");
     } else {
@@ -102,16 +103,54 @@ export async function executeLint({
     };
   }
 
-  const failureReason = result.stderr || result.stdout || "eslint_execution_failed";
-  logger.error(failureReason);
+  const reportedFailureReason = failureReason || "eslint_execution_failed";
+  logger.error(reportedFailureReason);
   return {
     status: "failed",
     command: commandText,
     timeoutSeconds,
     exitCode: result.exitCode,
     durationMs: result.durationMs,
-    failureReason
+    failureReason: reportedFailureReason
   };
+}
+
+function collectBlockingFailureReason(stderr: string, stdout: string): string {
+  return [stripNonBlockingEslintNotices(stderr), stripNonBlockingEslintNotices(stdout)]
+    .map((output) => output.trim())
+    .filter((output) => output.length > 0)
+    .join("\n\n");
+}
+
+function stripNonBlockingEslintNotices(output: string): string {
+  const lines = output.split(/\r?\n/);
+  const retainedLines: string[] = [];
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index] ?? "";
+    if (isBrowserslistNoticeStart(line)) {
+      while (index + 1 < lines.length && isBrowserslistNoticeContinuation(lines[index + 1] ?? "")) {
+        index += 1;
+      }
+      continue;
+    }
+
+    retainedLines.push(line);
+  }
+
+  return retainedLines.join("\n");
+}
+
+function isBrowserslistNoticeStart(line: string): boolean {
+  return line.startsWith("Browserslist: browsers data (caniuse-lite) is ");
+}
+
+function isBrowserslistNoticeContinuation(line: string): boolean {
+  const trimmedLine = line.trim();
+  return (
+    trimmedLine === "npx update-browserslist-db@latest" ||
+    trimmedLine.startsWith("Why you should do it regularly: https://github.com/browserslist/update-db")
+  );
 }
 
 async function emitSummaryFormatter({ cwd, outputDirectory }: { cwd: string; outputDirectory: string }): Promise<string> {

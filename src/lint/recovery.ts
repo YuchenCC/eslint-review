@@ -54,6 +54,7 @@ export async function recoverAndRetry({
 }: RecoverAndRetryInput): Promise<{ lintExecution: LintExecution; lintRecovery: LintRecovery }> {
   const packages = diagnoseMissingDependency(failedExecution.failureReason ?? "");
   if (packages.length === 0) {
+    logger.info("Recovery skipped: no installable missing ESLint dependency was detected in the failure output");
     return {
       lintExecution: failedExecution,
       lintRecovery: emptyRecovery("skipped", "no_installable_missing_dependency")
@@ -63,9 +64,12 @@ export async function recoverAndRetry({
   let lintExecution = failedExecution;
   let retryCount = 0;
   const installCommand = buildInstallCommand(packageManager, packages);
+  logger.info(`Recovery diagnosed missing ESLint dependency packages: ${packages.join(", ")}`);
+  logger.info(`Recovery will run install command: ${installCommand.text}`);
 
   while (retryCount < MAX_RETRIES && lintExecution.status === "failed") {
     retryCount += 1;
+    logger.info(`Recovery attempt ${retryCount}/${MAX_RETRIES}: installing diagnosed dependencies`);
     logger.command(installCommand.text);
     const installResult = await runCommand({
       cwd: executeInput.cwd,
@@ -75,6 +79,11 @@ export async function recoverAndRetry({
     });
 
     if (installResult.exitCode !== 0) {
+      logger.error(
+        `Recovery install failed with exit code ${installResult.exitCode ?? "unknown"}: ${
+          installResult.stderr || installResult.stdout || "install_failed"
+        }`
+      );
       return {
         lintExecution,
         lintRecovery: {
@@ -90,7 +99,11 @@ export async function recoverAndRetry({
       };
     }
 
+    logger.info("Recovery install succeeded; retrying ESLint execution");
     lintExecution = await executeLint({ ...executeInput, logger });
+    logger.info(
+      `Recovery retry finished with status ${lintExecution.status} and exit code ${lintExecution.exitCode ?? "unknown"}`
+    );
   }
 
   return {

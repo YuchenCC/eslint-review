@@ -71,6 +71,11 @@ export async function runChecker({ cwd, options }: RunCheckerInput): Promise<Che
         });
 
   if (options.recovery && lintExecution.status === "failed") {
+    logger.info(
+      `Recovery enabled after ESLint execution failed with exit code ${lintExecution.exitCode ?? "unknown"}: ${
+        lintExecution.failureReason ?? "eslint_execution_failed"
+      }`
+    );
     logger.info("Recovery enabled: attempting dependency recovery and retry");
     const recovered = await recoverAndRetry({
       cwd,

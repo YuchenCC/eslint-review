@@ -20,6 +20,8 @@ From the business project root, run:
 npx @sunny/eslint-checker --mode full --for-iflycode
 ```
 
+During full mode, keep the terminal visible. The checker streams ESLint subprocess output when ESLint emits it and prints periodic progress messages while ESLint is still running on large projects.
+
 If direct scoped execution is unavailable, install and run:
 
 ```bash

@@ -95,6 +95,7 @@ describe("lint execution", () => {
         cwd: tempDirectory,
         command: "npx",
         args: ["eslint", ".", "-f", summaryFormatterPath, "-o", ".eslint-checker/eslint-summary.json"],
+        streamOutput: true,
         timeoutMs: 10000
       });
       expect(logger.commands).toHaveLength(1);
@@ -149,6 +150,7 @@ describe("lint execution", () => {
         cwd: tempDirectory,
         command: "npx",
         args: ["eslint", ".", "-f", "json", "-o", ".eslint-checker/eslint-report.json"],
+        streamOutput: true,
         timeoutMs: 10000
       });
       expect(logger.commands).toHaveLength(2);
@@ -192,6 +194,62 @@ describe("lint execution", () => {
       });
       expect(logger.errors).toEqual(["ESLint completed but summary output was not generated"]);
     } finally {
+      await rm(tempDirectory, { recursive: true, force: true });
+    }
+  });
+
+  test("logs heartbeat messages while ESLint is still running", async () => {
+    vi.useFakeTimers();
+    const tempDirectory = await mkdtemp(path.join(tmpdir(), "eslint-execute-progress-"));
+    try {
+      await mkdir(path.join(tempDirectory, ".eslint-checker"), { recursive: true });
+      let resolveCommand: (value: {
+        exitCode: number;
+        stdout: string;
+        stderr: string;
+        durationMs: number;
+        timedOut: boolean;
+      }) => void = () => undefined;
+      mockedRunCommand.mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveCommand = resolve;
+          })
+      );
+
+      const logger = memoryLogger();
+      const execution = executeLint({
+        cwd: tempDirectory,
+        outputDirectory: ".eslint-checker",
+        timeoutSeconds: 60,
+        eslintAccess: connectedEslintAccess,
+        logger
+      });
+
+      await vi.waitFor(() => expect(mockedRunCommand).toHaveBeenCalledTimes(1));
+      await vi.advanceTimersByTimeAsync(45_000);
+      expect(logger.infos).toContain("ESLint still running after 15s...");
+      expect(logger.infos).toContain("ESLint still running after 30s...");
+      expect(logger.infos).toContain("ESLint still running after 45s...");
+
+      await writeFile(path.join(tempDirectory, ".eslint-checker", "eslint-summary.json"), "{}", "utf8");
+      resolveCommand({
+        exitCode: 0,
+        stdout: "",
+        stderr: "",
+        durationMs: 45_000,
+        timedOut: false
+      });
+
+      await expect(execution).resolves.toMatchObject({
+        status: "success",
+        exitCode: 0
+      });
+      const infoCountAfterCompletion = logger.infos.length;
+      await vi.advanceTimersByTimeAsync(15_000);
+      expect(logger.infos).toHaveLength(infoCountAfterCompletion);
+    } finally {
+      vi.useRealTimers();
       await rm(tempDirectory, { recursive: true, force: true });
     }
   });

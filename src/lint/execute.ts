@@ -7,6 +7,7 @@ import { runCommand } from "../utils/commands.js";
 import { pathExists } from "../utils/fs.js";
 
 const SUMMARY_FORMATTER_PATH = fileURLToPath(new URL("./summaryFormatter.js", import.meta.url));
+const PROGRESS_INTERVAL_MS = 15_000;
 
 export interface ExecuteLintInput {
   cwd: string;
@@ -43,12 +44,17 @@ export async function executeLint({
   const commandText = `npx ${args.join(" ")}`;
   logger.command(commandText);
 
-  const result = await runCommand({
-    cwd,
-    command: "npx",
-    args,
-    timeoutMs: timeoutSeconds * 1000
-  });
+  const result = await runCommandWithProgress(
+    {
+      cwd,
+      command: "npx",
+      args,
+      streamOutput: true,
+      timeoutMs: timeoutSeconds * 1000
+    },
+    logger,
+    "ESLint"
+  );
   const summaryExists = await pathExists(path.join(cwd, summaryPath));
 
   if (result.timedOut) {
@@ -110,12 +116,17 @@ async function emitRawEslintReport({
   const commandText = `npx ${args.join(" ")}`;
   logger.command(commandText);
 
-  const result = await runCommand({
-    cwd,
-    command: "npx",
-    args,
-    timeoutMs: timeoutSeconds * 1000
-  });
+  const result = await runCommandWithProgress(
+    {
+      cwd,
+      command: "npx",
+      args,
+      streamOutput: true,
+      timeoutMs: timeoutSeconds * 1000
+    },
+    logger,
+    "Raw ESLint JSON"
+  );
 
   if (result.timedOut) {
     logger.error(`Raw ESLint JSON execution timed out after ${timeoutSeconds}s`);
@@ -128,4 +139,23 @@ async function emitRawEslintReport({
   }
 
   return pathExists(path.join(cwd, reportPath));
+}
+
+async function runCommandWithProgress(
+  input: Parameters<typeof runCommand>[0],
+  logger: Logger,
+  label: string
+): ReturnType<typeof runCommand> {
+  logger.info(`${label} process started; streaming output when ESLint emits it`);
+  const startedAt = Date.now();
+  const progress = setInterval(() => {
+    const elapsedSeconds = Math.floor((Date.now() - startedAt) / 1000);
+    logger.info(`${label} still running after ${elapsedSeconds}s...`);
+  }, PROGRESS_INTERVAL_MS);
+
+  try {
+    return await runCommand(input);
+  } finally {
+    clearInterval(progress);
+  }
 }

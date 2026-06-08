@@ -54,7 +54,15 @@ export async function executeLint({
   await mkdir(path.join(cwd, outputDirectory), { recursive: true });
   const summaryFormatterPath = await emitSummaryFormatter({ cwd, outputDirectory });
   const summaryPath = path.join(outputDirectory, "eslint-summary.json");
-  const args = ["eslint", ...sourceEntries.entries, "-f", summaryFormatterPath, "-o", summaryPath];
+  const args = [
+    "eslint",
+    ...sourceEntries.entries,
+    ...buildIgnorePatternArgs(sourceEntries.ignorePatterns),
+    "-f",
+    summaryFormatterPath,
+    "-o",
+    summaryPath
+  ];
   const commandText = `npx ${args.join(" ")}`;
   logger.command(commandText);
 
@@ -324,7 +332,15 @@ async function emitRawEslintReport({
   logger: Logger;
 }): Promise<boolean> {
   const reportPath = path.join(outputDirectory, "eslint-report.json");
-  const args = ["eslint", ...sourceEntries.entries, "-f", "json", "-o", reportPath];
+  const args = [
+    "eslint",
+    ...sourceEntries.entries,
+    ...buildIgnorePatternArgs(sourceEntries.ignorePatterns),
+    "-f",
+    "json",
+    "-o",
+    reportPath
+  ];
   const commandText = `npx ${args.join(" ")}`;
   logger.command(commandText);
 
@@ -351,6 +367,10 @@ async function emitRawEslintReport({
   }
 
   return pathExists(path.join(cwd, reportPath));
+}
+
+function buildIgnorePatternArgs(ignorePatterns: string[]): string[] {
+  return ignorePatterns.flatMap((pattern) => ["--ignore-pattern", pattern]);
 }
 
 async function runCommandWithProgress(

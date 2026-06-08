@@ -47,6 +47,23 @@ const sourceEntries: SourceEntries = {
   ]
 };
 
+const sourceIgnoreArgs = [
+  "--ignore-pattern",
+  "**/node_modules/**",
+  "--ignore-pattern",
+  "**/dist/**",
+  "--ignore-pattern",
+  "**/build/**",
+  "--ignore-pattern",
+  ".eslint-checker/**",
+  "--ignore-pattern",
+  "public/**",
+  "--ignore-pattern",
+  "**/public/**",
+  "--ignore-pattern",
+  "**/*.min.js"
+];
+
 describe("lint execution", () => {
   beforeEach(() => {
     mockedRunCommand.mockReset();
@@ -128,13 +145,21 @@ describe("lint execution", () => {
       });
 
       expect(mockedRunCommand).toHaveBeenCalledTimes(1);
-      const summaryFormatterPath = mockedRunCommand.mock.calls[0]?.[0].args[3];
+      const summaryFormatterPath = getFormatterPathFromFirstRun();
       expect(path.isAbsolute(summaryFormatterPath ?? "")).toBe(true);
       expect(normalizePath(summaryFormatterPath ?? "")).toMatch(/\/\.eslint-checker\/summaryFormatter\.cjs$/);
       expect(mockedRunCommand).toHaveBeenCalledWith({
         cwd: tempDirectory,
         command: "npx",
-        args: ["eslint", "src", "-f", summaryFormatterPath, "-o", path.join(".eslint-checker", "eslint-summary.json")],
+        args: [
+          "eslint",
+          "src",
+          ...sourceIgnoreArgs,
+          "-f",
+          summaryFormatterPath,
+          "-o",
+          path.join(".eslint-checker", "eslint-summary.json")
+        ],
         streamOutput: true,
         timeoutMs: 10000
       });
@@ -166,7 +191,7 @@ describe("lint execution", () => {
         sourceEntries
       });
 
-      const summaryFormatterPath = mockedRunCommand.mock.calls[0]?.[0].args[3];
+      const summaryFormatterPath = getFormatterPathFromFirstRun();
       expect(normalizePath(summaryFormatterPath ?? "")).toMatch(/\/\.eslint-checker\/summaryFormatter\.cjs$/);
 
       const formatter = require(summaryFormatterPath ?? "");
@@ -239,19 +264,27 @@ describe("lint execution", () => {
         rawEslintReportGenerated: false
       });
 
-      const summaryFormatterPath = mockedRunCommand.mock.calls[0]?.[0].args[3];
+      const summaryFormatterPath = getFormatterPathFromFirstRun();
       expect(path.isAbsolute(summaryFormatterPath ?? "")).toBe(true);
       expect(normalizePath(summaryFormatterPath ?? "")).toMatch(/\/\.eslint-checker\/summaryFormatter\.cjs$/);
       expect(mockedRunCommand).toHaveBeenNthCalledWith(2, {
         cwd: tempDirectory,
         command: "npx",
-        args: ["eslint", "src", "-f", "json", "-o", path.join(".eslint-checker", "eslint-report.json")],
+        args: [
+          "eslint",
+          "src",
+          ...sourceIgnoreArgs,
+          "-f",
+          "json",
+          "-o",
+          path.join(".eslint-checker", "eslint-report.json")
+        ],
         streamOutput: true,
         timeoutMs: 10000
       });
       expect(logger.commands).toHaveLength(2);
       expect(normalizePath(logger.commands[0] ?? "")).toContain("/.eslint-checker/summaryFormatter.cjs -o .eslint-checker/eslint-summary.json");
-      expect(normalizePath(logger.commands[1] ?? "")).toBe("npx eslint src -f json -o .eslint-checker/eslint-report.json");
+      expect(normalizePath(logger.commands[1] ?? "")).toContain("--ignore-pattern **/*.min.js -f json -o .eslint-checker/eslint-report.json");
       expect(logger.errors).toEqual(["raw formatter failed"]);
     } finally {
       await rm(tempDirectory, { recursive: true, force: true });
@@ -809,4 +842,10 @@ function memoryLogger() {
 
 function normalizePath(value: string): string {
   return value.replaceAll("\\", "/");
+}
+
+function getFormatterPathFromFirstRun(): string | undefined {
+  const args = mockedRunCommand.mock.calls[0]?.[0].args ?? [];
+  const formatterFlagIndex = args.indexOf("-f");
+  return formatterFlagIndex >= 0 ? args[formatterFlagIndex + 1] : undefined;
 }

@@ -7,4 +7,4 @@
 - [x] Add an explicit recovery path that runs package-manager install for declared-but-missing jupui dependencies without adding direct ESLint packages.
 - [x] Update risk assessment to avoid incomplete-setup recommendations when ESLint is correctly managed by jupui.
 - [x] Add focused tests for jupui 2.x and 3.x fixture shapes and preserve existing non-jupui behavior.
-- [ ] Run the test suite and verify checker output against `jup/eslintByJup2` and `jup/eslintByJup3`.
+- [x] Run the test suite and verify checker output against `jup/eslintByJup2` and `jup/eslintByJup3`.

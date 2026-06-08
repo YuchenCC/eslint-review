@@ -55,13 +55,14 @@ describe("iflycode report skill template", () => {
     expect(skill).toContain("允许保留英文的内容仅限");
   });
 
-  test("requires removing existing checker output before every run", async () => {
+  test("requires choosing whether to regenerate or reuse existing checker output", async () => {
     const skill = await readFile(skillPath, "utf8");
 
-    expect(skill).toContain("## Clean Previous Output");
-    expect(skill).toContain("每次运行 checker 前，必须先检查业务工程根目录下是否存在 `.eslint-checker`");
-    expect(skill).toContain("若存在，必须删除整个 `.eslint-checker` 目录");
-    expect(skill).toContain("不得复用旧的 `.eslint-checker/report.json` 或旧报告产物");
+    expect(skill).toContain("## Existing Output Choice");
+    expect(skill).toContain("每次准备报告前，必须先检查业务工程根目录下是否存在 `.eslint-checker`");
+    expect(skill).toContain("如果 `.eslint-checker` 已存在，必须先让用户选择本次数据来源");
+    expect(skill).toContain("重新生成：删除整个 `.eslint-checker` 目录后重新运行 checker");
+    expect(skill).toContain("使用现有结果：不删除 `.eslint-checker`，不重新运行 checker");
     expect(skill).toContain("Remove-Item .eslint-checker -Recurse -Force");
   });
 

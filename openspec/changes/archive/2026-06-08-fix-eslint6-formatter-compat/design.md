@@ -1,3 +1,8 @@
+---
+archived-with: 2026-06-08-fix-eslint6-formatter-compat
+status: final
+status: final
+---
 # Design: fix-eslint6-formatter-compat
 
 ## Approach

@@ -2,6 +2,8 @@
 comet_change: support-jupui-eslint
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-06-08-support-jupui-eslint
+status: final
 ---
 
 # Support Jupui ESLint Technical Design

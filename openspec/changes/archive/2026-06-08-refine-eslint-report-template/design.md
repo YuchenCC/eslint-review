@@ -1,3 +1,8 @@
+---
+archived-with: 2026-06-08-refine-eslint-report-template
+status: final
+status: final
+---
 # Design: refine-eslint-report-template
 
 ## Overview

@@ -14,6 +14,7 @@ base-ref: 7ccd891f82536f33f725926fa884e31aa8aecfb0
 
 **Tech Stack:** TypeScript, Node.js `createRequire`, `fast-glob`, Vitest, existing checker report types.
 
+archived-with: 2026-06-08-support-jupui-eslint
 ---
 
 ## File Structure

@@ -1,0 +1,14 @@
+name: refine-eslint-report-template
+workflow: full
+phase: archive
+open_result: pending
+build_mode: direct
+isolation: branch
+verify_mode: light
+design_doc: openspec/changes/refine-eslint-report-template/design.md
+plan: null
+verify_result: pass
+verification_report: docs/superpowers/reports/2026-06-08-refine-eslint-report-template-verify.md
+branch_status: handled
+verified_at: 2026-06-08
+archived: true

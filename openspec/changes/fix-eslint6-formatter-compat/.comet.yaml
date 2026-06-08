@@ -1,0 +1,8 @@
+name: fix-eslint6-formatter-compat
+workflow: hotfix
+phase: verify
+verify_result: pending
+manual_verification_result: pass
+verification_report: docs/superpowers/reports/2026-06-06-fix-eslint6-formatter-compat-verify.md
+branch_status: not_handled
+archive_blocked_reason: usable_comet_bash_not_found

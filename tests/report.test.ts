@@ -142,7 +142,7 @@ describe("report artifacts", () => {
       expect(reportJson.eslintResolvedConfig).toMatchObject({
         status: "success",
         targetFile: "src/index.js",
-        outputPath: ".eslint-checker/eslint-config.json"
+        outputPath: path.join(".eslint-checker", "eslint-config.json")
       });
       expect(reportJson.eslintConfigAnalysis.extendedConfigs).toEqual([
         "eslint:recommended",

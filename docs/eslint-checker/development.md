@@ -19,6 +19,7 @@ npm install
 ```bash
 npm test
 npm run build
+npm run test:artifact
 npm run lint
 ```
 
@@ -75,6 +76,14 @@ docs/            设计、计划、验证和组件文档
 npm test
 npm run build
 ```
+
+制品级验证命令：
+
+```bash
+npm run test:artifact
+```
+
+该命令先构建 `dist/`，再使用构建后的 `dist/cli.js` 对真实 `jup/eslintByJup2` 和 `jup/eslintByJup3` 样本执行 `full` 模式检查。`jup/` 样本目录被仓库忽略，不属于普通 `npm test`；运行制品级验证时，如果样本目录或 `node_modules/jupui` 缺失，命令会直接失败。
 
 涉及 CLI 参数时，补充：
 

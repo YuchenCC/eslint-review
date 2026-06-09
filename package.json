@@ -8,6 +8,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "vitest run",
+    "test:artifact": "npm run build && node tests/jupArtifact.test.mjs",
     "test:watch": "vitest",
     "lint": "eslint ."
   },

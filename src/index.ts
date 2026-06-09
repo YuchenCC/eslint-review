@@ -1,3 +1,5 @@
+import { rm } from "node:fs/promises";
+import path from "node:path";
 import type { CheckerReport, LintRecovery, RunCheckerInput } from "./types.js";
 import { analyzeEslintConfig } from "./analysis/configAnalysis.js";
 import { scanEslintDisable } from "./analysis/disableScan.js";
@@ -11,15 +13,17 @@ import { parseEslintSummary } from "./lint/parse.js";
 import { recoverAndRetry } from "./lint/recovery.js";
 import { writeArtifacts } from "./report/artifacts.js";
 import { assessRisk } from "./report/risk.js";
+import { pathExists } from "./utils/fs.js";
 
 const CHECKER_VERSION = "0.1.0";
 const SCHEMA_VERSION = "0.2.0";
 
 export async function runChecker({ cwd, options }: RunCheckerInput): Promise<CheckerReport> {
-  const outputDirectory = options.output;
+  const outputDirectory = normalizeOutputDirectory(options.output);
   const timeoutSeconds = Number.parseInt(options.timeout, 10);
   const logger = createLogger({ console: options.console });
   logger.info("[1/7] Initializing check");
+  await prepareOutputDirectory(cwd, outputDirectory, logger);
   logger.info("[2/7] Discovering project and static ESLint context");
   const [projectDiscovery, eslintAccess, eslintConfigAnalysis, sourceEntries] = await Promise.all([
     discoverProject(cwd),
@@ -169,6 +173,27 @@ export async function runChecker({ cwd, options }: RunCheckerInput): Promise<Che
   await writeArtifacts(cwd, report, logger.toText());
   logger.info(`Done. Report: ${outputDirectory}/report.json`);
   return report;
+}
+
+function normalizeOutputDirectory(outputDirectory: string): ".eslint-checker" {
+  if (outputDirectory !== ".eslint-checker") {
+    throw new Error("Unsupported output directory. Only .eslint-checker is supported.");
+  }
+
+  return ".eslint-checker";
+}
+
+async function prepareOutputDirectory(
+  cwd: string,
+  outputDirectory: ".eslint-checker",
+  logger: ReturnType<typeof createLogger>
+): Promise<void> {
+  logger.info(`Preparing output directory: ${outputDirectory}`);
+  const outputPath = path.join(cwd, outputDirectory);
+  if (await pathExists(outputPath)) {
+    await rm(outputPath, { recursive: true, force: true });
+    logger.info(`Existing output directory removed: ${outputDirectory}`);
+  }
 }
 
 export type { CheckerReport, CheckerOptions, RunCheckerInput } from "./types.js";

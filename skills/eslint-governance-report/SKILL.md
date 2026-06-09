@@ -9,78 +9,25 @@ description: Use when generating an ESLint governance report for a JavaScript or
 
 ## Inputs
 
-- 业务工程根目录。若用户未提供，先询问路径。
 - 可选报告元数据：system、center、owner。
+- checker 输出工程目录：`checkerOutputDir`，默认且当前唯一允许值为 `.eslint-checker`。
 
-## Existing Output Choice
+## Checker Output Directory
 
-每次准备报告前，必须先检查业务工程根目录下是否存在 `.eslint-checker`。检查前必须先确认当前目录就是业务工程根目录；不要在 checker 工程根目录、父目录或其他工作目录用相对路径判断业务工程的 `.eslint-checker`。
+本 workflow 的 checker 输出目录固定为 `.eslint-checker`。不要要求用户选择其他输出目录，也不要在命令中传入其他 `--output` 值。
 
-PowerShell / pwsh 检查代码：
+输出目录清理由 `@sunny/eslint-checker` CLI 在 Node 层负责：
 
-```powershell
-$ProjectRoot = (Get-Location).Path
-$CheckerOutput = Join-Path $ProjectRoot '.eslint-checker'
-$CheckerOutputExists = Test-Path -LiteralPath $CheckerOutput -PathType Container
-
-if ($CheckerOutputExists) {
-  "EXISTING_ESLINT_CHECKER_OUTPUT=present"
-} else {
-  "EXISTING_ESLINT_CHECKER_OUTPUT=missing"
-}
-```
-
-Bash 检查代码：
-
-```bash
-project_root="$(pwd)"
-checker_output="$project_root/.eslint-checker"
-
-if [ -d "$checker_output" ]; then
-  echo "EXISTING_ESLINT_CHECKER_OUTPUT=present"
-else
-  echo "EXISTING_ESLINT_CHECKER_OUTPUT=missing"
-fi
-```
-
-如果 `.eslint-checker` 已存在，必须先让用户选择本次数据来源：
-
-1. 重新生成：删除整个 `.eslint-checker` 目录后重新运行 checker，确保报告来自完整新跑的一轮流程。
-2. 使用现有结果：不删除 `.eslint-checker`，不重新运行 checker，直接基于现有 `.eslint-checker/report.json` 生成 `.eslint-checker/key-data.json` 和 `.eslint-checker/eslint-governance-report.md`。
-
-如果用户选择使用现有结果，必须先确认 `.eslint-checker/report.json` 是否存在。若缺失，仍必须按固定结构生成 key data 和 Markdown，但所有机器采集事实字段标记为未采集，并在 `9.3 未采集项` 记录原因；也可以让用户改选重新生成。
-
-如果 `.eslint-checker` 不存在，直接运行 checker。
-
-重新生成时删除旧目录：
-
-PowerShell:
-
-```powershell
-$ProjectRoot = (Get-Location).Path
-$CheckerOutput = Join-Path $ProjectRoot '.eslint-checker'
-$CheckerOutputExists = Test-Path -LiteralPath $CheckerOutput -PathType Container
-
-if ($CheckerOutputExists) {
-  Remove-Item -LiteralPath $CheckerOutput -Recurse -Force
-}
-```
-
-Bash:
-
-```bash
-project_root="$(pwd)"
-checker_output="$project_root/.eslint-checker"
-rm -rf "$checker_output"
-```
-
-删除旧目录后，再执行 `npx @sunny/eslint-checker --mode full`。
+- 如果 `.eslint-checker` 已存在，CLI 会删除整个目录后重新生成。
+- 如果 `.eslint-checker` 不存在，CLI 会直接生成。
+- skill 不执行任何 shell 删除命令，不判断终端类型，不提供复用旧产物分支。
+- CLI 拒绝 `.eslint-checker` 之外的输出目录，避免跨终端和跨系统路径处理差异导致误删或幻觉。
 
 ## Run Checker
 
-仅当 `.eslint-checker` 不存在，或用户选择重新生成时，在业务工程根目录执行：
+在当前工程根目录直接执行：
 
-```bash
+```shell
 npx @sunny/eslint-checker --mode full
 ```
 
@@ -88,19 +35,17 @@ full mode 执行期间保持终端可见。checker 会在 ESLint 子进程产生
 
 如果 scoped package 无法直接执行，先尝试安装后执行：
 
-```bash
-npm install -D @sunny/eslint-checker
-npx eslint-checker --mode full
+```shell
+npm install -D @sunny/eslint-checker && npx eslint-checker --mode full
 ```
 
 如果 `npm install -D @sunny/eslint-checker` 失败：
 
 - 若出现 `401 Unauthorized`、`E401` 或需要认证的 registry 错误，提示用户先执行 `npm login`，登录到当前 registry 后再重试 `npm install -D @sunny/eslint-checker`。
-- 若出现 `404 Not Found`、私有源不可访问、包不存在，或用户无法完成 registry 认证，必须让用户手工输入可安装的本地路径。用户提供路径后，在业务工程根目录执行本地安装：
+- 若出现 `404 Not Found`、私有源不可访问、包不存在，或用户无法完成 registry 认证，必须让用户手工输入可安装的本地路径。用户提供路径后，在当前工程根目录执行本地安装：
 
-```bash
-npm install -D "<用户提供的eslint-checker本地路径>"
-npx eslint-checker --mode full
+```shell
+npm install -D "<用户提供的eslint-checker本地路径>" && npx eslint-checker --mode full
 ```
 
 本地路径可以是 checker 工程目录或已打包的 `.tgz` 文件。不要猜测路径；如果用户未提供，先询问。安装前不要删除或覆盖用户提供路径中的文件。
@@ -120,7 +65,7 @@ Markdown 文档是正式交付物，不再生成其他文档格式。
 
 多个工程的最终产物必须保持结构一致，便于批量汇总和横向比较。
 
-- 无论 checker 成功、部分成功、失败、超时、用户复用现有结果，或 `.eslint-checker/report.json` 缺失，都必须生成同一套产物：`.eslint-checker/key-data.json` 和 `.eslint-checker/eslint-governance-report.md`。
+- 无论 checker 成功、部分成功、失败、超时，或 `.eslint-checker/report.json` 缺失，都必须生成同一套产物：`.eslint-checker/key-data.json` 和 `.eslint-checker/eslint-governance-report.md`。
 - key data 必须保留固定 top-level schema 和固定字段集合。不得因为字段缺失、artifact 未生成、lint 未执行或项目未接入 ESLint 而删除字段。
 - Markdown 必须保留 `0` 到 `9` 的固定章节、固定 subsection 和固定顺序。不得因为无数据而删除章节、合并章节或改变标题。
 - 缺失字符串字段使用 `unknown`；未采集数值字段使用 `null`；列表无数据使用 `[]`；可选 artifact 不存在时字段保留为 `null`。

@@ -57,26 +57,28 @@ describe("ESLint governance report skill template", () => {
     expect(skill).toContain("允许保留英文的内容仅限");
   });
 
-  test("requires choosing whether to regenerate or reuse existing checker output", async () => {
+  test("defines a fixed checker output directory handled by the CLI", async () => {
     const skill = await readFile(skillPath, "utf8");
 
-    expect(skill).toContain("## Existing Output Choice");
-    expect(skill).toContain("每次准备报告前，必须先检查业务工程根目录下是否存在 `.eslint-checker`");
-    expect(skill).toContain("如果 `.eslint-checker` 已存在，必须先让用户选择本次数据来源");
-    expect(skill).toContain("重新生成：删除整个 `.eslint-checker` 目录后重新运行 checker");
-    expect(skill).toContain("使用现有结果：不删除 `.eslint-checker`，不重新运行 checker");
-    expect(skill).toContain("Remove-Item -LiteralPath $CheckerOutput -Recurse -Force");
+    expect(skill).toContain("checker 输出工程目录：`checkerOutputDir`，默认且当前唯一允许值为 `.eslint-checker`。");
+    expect(skill).toContain("## Checker Output Directory");
+    expect(skill).toContain("本 workflow 的 checker 输出目录固定为 `.eslint-checker`");
+    expect(skill).toContain("输出目录清理由 `@sunny/eslint-checker` CLI 在 Node 层负责");
+    expect(skill).toContain("如果 `.eslint-checker` 已存在，CLI 会删除整个目录后重新生成");
+    expect(skill).toContain("CLI 拒绝 `.eslint-checker` 之外的输出目录");
   });
 
-  test("uses a project-root-bound Windows path when checking existing checker output", async () => {
+  test("does not ask the model to detect terminals or delete checker output with shell commands", async () => {
     const skill = await readFile(skillPath, "utf8");
 
-    expect(skill).toContain("$ProjectRoot = (Get-Location).Path");
-    expect(skill).toContain("$CheckerOutput = Join-Path $ProjectRoot '.eslint-checker'");
-    expect(skill).toContain("$CheckerOutputExists = Test-Path -LiteralPath $CheckerOutput -PathType Container");
-    expect(skill).toContain("if ($CheckerOutputExists) {");
-    expect(skill).toContain("Test-Path -LiteralPath $CheckerOutput -PathType Container");
-    expect(skill).toContain("Remove-Item -LiteralPath $CheckerOutput -Recurse -Force");
+    expect(skill).not.toContain("ACTIVE_TERMINAL");
+    expect(skill).not.toContain("ActiveTerminal");
+    expect(skill).not.toContain("Remove-Item");
+    expect(skill).not.toContain("rm -rf");
+    expect(skill).not.toContain("Test-Path");
+    expect(skill).not.toContain("使用现有结果");
+    expect(skill).not.toContain("必须先让用户选择本次数据来源");
+    expect(skill).toContain("skill 不执行任何 shell 删除命令，不判断终端类型，不提供复用旧产物分支");
   });
 
   test("requires Beijing time for displayed report check time", async () => {

@@ -121,6 +121,74 @@ describe("report artifacts", () => {
     }
   });
 
+  test("removes existing checker output before generating a fresh report", async () => {
+    const cwd = await mkdtemp(path.join(tmpdir(), "eslint-checker-clean-output-"));
+    await writeFile(
+      path.join(cwd, "package.json"),
+      JSON.stringify({ name: "clean-output-fixture", version: "1.0.0" }),
+      "utf8"
+    );
+    await mkdir(path.join(cwd, ".eslint-checker"), { recursive: true });
+    await writeFile(path.join(cwd, ".eslint-checker/stale.txt"), "stale\n", "utf8");
+
+    try {
+      await runChecker({
+        cwd,
+        options: {
+          mode: "access",
+          output: ".eslint-checker",
+          timeout: "1",
+          recovery: true
+        }
+      });
+
+      await expect(readFile(path.join(cwd, ".eslint-checker/stale.txt"), "utf8")).rejects.toMatchObject({
+        code: "ENOENT"
+      });
+      const reportJson = JSON.parse(await readFile(path.join(cwd, ".eslint-checker/report.json"), "utf8"));
+      const lintLog = await readFile(path.join(cwd, ".eslint-checker/lint-log.txt"), "utf8");
+      expect(reportJson.artifacts.outputDirectory).toBe(".eslint-checker");
+      expect(lintLog).toContain("Existing output directory removed: .eslint-checker");
+    } finally {
+      await rm(cwd, { force: true, recursive: true });
+    }
+  });
+
+  test.each(["custom-output", "../outside-output", path.join(tmpdir(), "eslint-checker-absolute-output")])(
+    "rejects unsupported output directory %s before deleting files",
+    async (output) => {
+      const cwd = await mkdtemp(path.join(tmpdir(), "eslint-checker-invalid-output-"));
+      const targetDirectory = path.resolve(cwd, output);
+      await writeFile(
+        path.join(cwd, "package.json"),
+        JSON.stringify({ name: "invalid-output-fixture", version: "1.0.0" }),
+        "utf8"
+      );
+      await mkdir(targetDirectory, { recursive: true });
+      await writeFile(path.join(targetDirectory, "marker.txt"), "keep\n", "utf8");
+
+      try {
+        await expect(
+          runChecker({
+            cwd,
+            options: {
+              mode: "access",
+              output,
+              timeout: "1",
+              recovery: true
+            }
+          })
+        ).rejects.toThrow("Unsupported output directory");
+        await expect(readFile(path.join(targetDirectory, "marker.txt"), "utf8")).resolves.toBe("keep\n");
+      } finally {
+        await rm(cwd, { force: true, recursive: true });
+        if (path.isAbsolute(output)) {
+          await rm(targetDirectory, { force: true, recursive: true });
+        }
+      }
+    }
+  );
+
   test("writes resolved ESLint config and records extended config packages", async () => {
     const cwd = await mkdtemp(path.join(tmpdir(), "eslint-checker-config-"));
     await mkdir(path.join(cwd, "src"), { recursive: true });

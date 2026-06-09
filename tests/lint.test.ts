@@ -460,6 +460,46 @@ describe("lint execution", () => {
     }
   });
 
+  test("does not include colored npm config warnings in the ESLint failure reason", async () => {
+    const tempDirectory = await mkdtemp(path.join(tmpdir(), "eslint-execute-colored-npm-warn-filter-"));
+    try {
+      mockedRunCommand.mockResolvedValueOnce({
+        exitCode: 2,
+        stdout: [
+          '\u001B[33mnpm warn Unknown env config "always-auth". This will stop working in the next major version of npm.\u001B[39m',
+          ' npm warn Unknown env config "email". This will stop working in the next major version of npm.'
+        ].join("\n"),
+        stderr: [
+          '\u001B[33mnpm warn Unknown user config "email". This will stop working in the next major version of npm.\u001B[39m',
+          '\u001B[33mnpm warn Unknown user config "always-auth". This will stop working in the next major version of npm.\u001B[39m',
+          "There was a problem loading formatter: D:\\project\\hr\\hrms\\hrms_web\\.eslint-checker\\summaryFormatter.cjs",
+          "Error: Cannot find module 'D:\\project\\hr\\hrms\\hrms_web\\.eslint-checker\\summaryFormatter.cjs'"
+        ].join("\n"),
+        durationMs: 20,
+        timedOut: false
+      });
+
+      await expect(
+        executeLint({
+          cwd: tempDirectory,
+          outputDirectory: ".eslint-checker",
+          timeoutSeconds: 10,
+          eslintAccess: connectedEslintAccess,
+          sourceEntries
+        })
+      ).resolves.toMatchObject({
+        status: "failed",
+        exitCode: 2,
+        failureReason: [
+          "There was a problem loading formatter: D:\\project\\hr\\hrms\\hrms_web\\.eslint-checker\\summaryFormatter.cjs",
+          "Error: Cannot find module 'D:\\project\\hr\\hrms\\hrms_web\\.eslint-checker\\summaryFormatter.cjs'"
+        ].join("\n")
+      });
+    } finally {
+      await rm(tempDirectory, { recursive: true, force: true });
+    }
+  });
+
   test("treats ESLint output as collected when only Browserslist notices accompany a generated summary", async () => {
     const tempDirectory = await mkdtemp(path.join(tmpdir(), "eslint-execute-browserslist-summary-"));
     try {

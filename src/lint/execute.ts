@@ -172,7 +172,11 @@ function isBrowserslistNoticeContinuation(line: string): boolean {
 }
 
 function isNpmWarning(line: string): boolean {
-  return line.toLowerCase().startsWith("npm warn ");
+  return stripAnsi(line).trimStart().toLowerCase().startsWith("npm warn ");
+}
+
+function stripAnsi(value: string): string {
+  return value.replace(/\u001B\[[0-?]*[ -/]*[@-~]/g, "");
 }
 
 async function emitSummaryFormatter({ cwd, outputDirectory }: { cwd: string; outputDirectory: string }): Promise<string> {

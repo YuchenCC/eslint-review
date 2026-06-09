@@ -54,4 +54,21 @@ describe("runCommand", () => {
       stderrWrite.mockRestore();
     }
   });
+
+  test("passes custom environment variables to the command", async () => {
+    const result = await runCommand({
+      cwd: process.cwd(),
+      command: process.execPath,
+      args: ["-e", "console.log(process.env.NPM_CONFIG_LOGLEVEL || process.env.npm_config_loglevel || '')"],
+      env: { NPM_CONFIG_LOGLEVEL: "error", npm_config_loglevel: "error" },
+      timeoutMs: 1000
+    });
+
+    expect(result).toMatchObject({
+      exitCode: 0,
+      stdout: "error",
+      stderr: "",
+      timedOut: false
+    });
+  });
 });

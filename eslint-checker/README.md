@@ -16,12 +16,7 @@ Useful options:
 - `--no-recovery`: disable bounded missing dependency recovery.
 - `--raw-eslint-report`: also emit full raw ESLint JSON for debugging. This is slower and can be large.
 - `--system`, `--center`, `--owner`: attach report metadata.
-
-Source discovery:
-
-- ESLint execution, `eslint-disable` scanning, and resolved config collection use the same discovered source entries.
-- Supported entries are `src`, `apps/*/src`, `apps/*/app`, `packages/*/src`, and `packages/*/app`.
-- Generated and public assets are excluded, including `public`, nested `public`, `dist`, `build`, `node_modules`, the output directory, and `*.min.js`.
+- `--for-iflycode`: emit artifacts for iflycode report generation.
 
 Generated artifacts:
 
@@ -34,18 +29,22 @@ Generated artifacts:
 
 The checker reports both static config quality and resolved ESLint config. `eslintConfigAnalysis` is a static governance analysis of config files and `package.json#eslintConfig`, focused on disabled rules and weakened standard config. `eslintResolvedConfig` records whether the CLI could ask ESLint for the effective config and, when successful, writes that merged runtime config to `.eslint-checker/eslint-config.json`.
 
-## ESLint Governance Report Skill Usage
+## iflycode Skill Usage
 
-Use `skills/eslint-governance-report/SKILL.md` to run the checker in a business project and generate a formal governance report. The Skill must use `.eslint-checker/report.json` as the source of truth and must not invent factual counts or statuses.
+Use `skills/iflycode-eslint-report/SKILL.md` to run the checker in a business project and generate a formal report. The Skill must use `.eslint-checker/report.json` as the source of truth and must not invent factual counts or statuses.
 
 Typical command:
 
 ```bash
-npx @sunny/eslint-checker --mode full
+npx @sunny/eslint-checker --mode full --for-iflycode
 ```
 
 ## Documentation
 
-- [使用说明](docs/eslint-checker/usage.md)：从引入 Skill 到生成治理报告的完整流程。
-- [组件说明](docs/eslint-checker/component-guide.md)：组件边界、主流程、模块职责和数据口径。
-- [研发文档](docs/eslint-checker/development.md)：本地开发、测试、构建、打包和维护约定。
+This directory is a packaged artifact snapshot. For current source-level documentation, see:
+
+- `../docs/eslint-checker/usage.md`
+- `../docs/eslint-checker/component-guide.md`
+- `../docs/eslint-checker/development.md`
+
+Current source `src/cli.ts` does not define `--for-iflycode`; use the source-level docs as the maintenance reference.

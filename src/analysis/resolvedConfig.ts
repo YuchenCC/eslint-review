@@ -15,6 +15,10 @@ export interface CollectResolvedEslintConfigInput {
 }
 
 const SOURCE_FILE_EXTENSIONS = "{js,cjs,mjs,jsx,ts,cts,mts,tsx,vue}";
+const QUIET_NPM_ENV: NodeJS.ProcessEnv = {
+  NPM_CONFIG_LOGLEVEL: "error",
+  npm_config_loglevel: "error"
+};
 
 export async function collectResolvedEslintConfig({
   cwd,
@@ -51,13 +55,14 @@ export async function collectResolvedEslintConfig({
     });
   }
 
-  const args = ["eslint", "--print-config", targetFile];
+  const args = ["--loglevel=error", "eslint", "--print-config", targetFile];
   const commandText = `npx ${args.join(" ")}`;
   logger.command(commandText);
   const result = await runCommand({
     cwd,
     command: "npx",
     args,
+    env: QUIET_NPM_ENV,
     timeoutMs: timeoutSeconds * 1000
   });
 

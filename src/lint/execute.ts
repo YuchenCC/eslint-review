@@ -7,6 +7,10 @@ import { pathExists } from "../utils/fs.js";
 
 const PROGRESS_INTERVAL_MS = 15_000;
 const SUMMARY_FORMATTER_FILENAME = "summaryFormatter.cjs";
+const QUIET_NPM_ENV: NodeJS.ProcessEnv = {
+  NPM_CONFIG_LOGLEVEL: "error",
+  npm_config_loglevel: "error"
+};
 
 export interface ExecuteLintInput {
   cwd: string;
@@ -55,6 +59,7 @@ export async function executeLint({
   const summaryFormatterPath = await emitSummaryFormatter({ cwd, outputDirectory });
   const summaryPath = path.join(outputDirectory, "eslint-summary.json");
   const args = [
+    "--loglevel=error",
     "eslint",
     ...sourceEntries.entries,
     ...buildIgnorePatternArgs(sourceEntries.ignorePatterns),
@@ -71,6 +76,7 @@ export async function executeLint({
       cwd,
       command: "npx",
       args,
+      env: QUIET_NPM_ENV,
       streamOutput: true,
       timeoutMs: timeoutSeconds * 1000
     },
@@ -143,6 +149,10 @@ function stripNonBlockingEslintNotices(output: string): string {
       continue;
     }
 
+    if (isNpmWarning(line)) {
+      continue;
+    }
+
     retainedLines.push(line);
   }
 
@@ -161,10 +171,15 @@ function isBrowserslistNoticeContinuation(line: string): boolean {
   );
 }
 
+function isNpmWarning(line: string): boolean {
+  return line.toLowerCase().startsWith("npm warn ");
+}
+
 async function emitSummaryFormatter({ cwd, outputDirectory }: { cwd: string; outputDirectory: string }): Promise<string> {
-  const formatterPath = path.join(cwd, outputDirectory, SUMMARY_FORMATTER_FILENAME);
+  const formatterArg = normalizeCliPath(path.join(outputDirectory, SUMMARY_FORMATTER_FILENAME));
+  const formatterPath = path.join(cwd, formatterArg);
   await writeFile(formatterPath, SUMMARY_FORMATTER_CJS, "utf8");
-  return formatterPath;
+  return formatterArg;
 }
 
 const SUMMARY_FORMATTER_CJS = `"use strict";
@@ -333,6 +348,7 @@ async function emitRawEslintReport({
 }): Promise<boolean> {
   const reportPath = path.join(outputDirectory, "eslint-report.json");
   const args = [
+    "--loglevel=error",
     "eslint",
     ...sourceEntries.entries,
     ...buildIgnorePatternArgs(sourceEntries.ignorePatterns),
@@ -349,6 +365,7 @@ async function emitRawEslintReport({
       cwd,
       command: "npx",
       args,
+      env: QUIET_NPM_ENV,
       streamOutput: true,
       timeoutMs: timeoutSeconds * 1000
     },
@@ -371,6 +388,10 @@ async function emitRawEslintReport({
 
 function buildIgnorePatternArgs(ignorePatterns: string[]): string[] {
   return ignorePatterns.flatMap((pattern) => ["--ignore-pattern", pattern]);
+}
+
+function normalizeCliPath(value: string): string {
+  return value.replaceAll(path.sep, "/");
 }
 
 async function runCommandWithProgress(

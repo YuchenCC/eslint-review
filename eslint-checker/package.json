@@ -1,6 +1,6 @@
 {
   "name": "@sunny/eslint-checker",
-  "version": "1.0.5",
+  "version": "0.1.1",
   "type": "module",
   "bin": {
     "eslint-checker": "dist/cli.js"

@@ -64,6 +64,11 @@ const sourceIgnoreArgs = [
   "**/*.min.js"
 ];
 
+const quietNpmEnv = {
+  NPM_CONFIG_LOGLEVEL: "error",
+  npm_config_loglevel: "error"
+};
+
 describe("lint execution", () => {
   beforeEach(() => {
     mockedRunCommand.mockReset();
@@ -146,12 +151,12 @@ describe("lint execution", () => {
 
       expect(mockedRunCommand).toHaveBeenCalledTimes(1);
       const summaryFormatterPath = getFormatterPathFromFirstRun();
-      expect(path.isAbsolute(summaryFormatterPath ?? "")).toBe(true);
-      expect(normalizePath(summaryFormatterPath ?? "")).toMatch(/\/\.eslint-checker\/summaryFormatter\.cjs$/);
+      expect(summaryFormatterPath).toBe(".eslint-checker/summaryFormatter.cjs");
       expect(mockedRunCommand).toHaveBeenCalledWith({
         cwd: tempDirectory,
         command: "npx",
         args: [
+          "--loglevel=error",
           "eslint",
           "src",
           ...sourceIgnoreArgs,
@@ -160,11 +165,67 @@ describe("lint execution", () => {
           "-o",
           path.join(".eslint-checker", "eslint-summary.json")
         ],
+        env: quietNpmEnv,
         streamOutput: true,
         timeoutMs: 10000
       });
       expect(logger.commands).toHaveLength(1);
-      expect(normalizePath(logger.commands[0] ?? "")).toContain("/.eslint-checker/summaryFormatter.cjs -o .eslint-checker/eslint-summary.json");
+      expect(normalizePath(logger.commands[0] ?? "")).toContain("-f .eslint-checker/summaryFormatter.cjs -o .eslint-checker/eslint-summary.json");
+    } finally {
+      await rm(tempDirectory, { recursive: true, force: true });
+    }
+  });
+
+  test("runs npx eslint with npm warnings disabled", async () => {
+    const tempDirectory = await mkdtemp(path.join(tmpdir(), "eslint-execute-quiet-npm-"));
+    try {
+      await mkdir(path.join(tempDirectory, ".eslint-checker"), { recursive: true });
+      await writeFile(path.join(tempDirectory, ".eslint-checker", "eslint-summary.json"), "{}", "utf8");
+      mockedRunCommand.mockResolvedValueOnce({
+        exitCode: 0,
+        stdout: "",
+        stderr: "",
+        durationMs: 25,
+        timedOut: false
+      });
+
+      await executeLint({
+        cwd: tempDirectory,
+        outputDirectory: ".eslint-checker",
+        timeoutSeconds: 10,
+        eslintAccess: connectedEslintAccess,
+        sourceEntries
+      });
+
+      expect(mockedRunCommand).toHaveBeenCalledWith(expect.objectContaining({ env: quietNpmEnv }));
+      expect(mockedRunCommand.mock.calls[0]?.[0].args.slice(0, 2)).toEqual(["--loglevel=error", "eslint"]);
+    } finally {
+      await rm(tempDirectory, { recursive: true, force: true });
+    }
+  });
+
+  test("passes a project-relative formatter path for Windows-compatible ESLint loading", async () => {
+    const tempDirectory = await mkdtemp(path.join(tmpdir(), "eslint-execute-relative-formatter-"));
+    try {
+      await mkdir(path.join(tempDirectory, ".eslint-checker"), { recursive: true });
+      await writeFile(path.join(tempDirectory, ".eslint-checker", "eslint-summary.json"), "{}", "utf8");
+      mockedRunCommand.mockResolvedValueOnce({
+        exitCode: 0,
+        stdout: "",
+        stderr: "",
+        durationMs: 25,
+        timedOut: false
+      });
+
+      await executeLint({
+        cwd: tempDirectory,
+        outputDirectory: ".eslint-checker",
+        timeoutSeconds: 10,
+        eslintAccess: connectedEslintAccess,
+        sourceEntries
+      });
+
+      expect(getFormatterPathFromFirstRun()).toBe(".eslint-checker/summaryFormatter.cjs");
     } finally {
       await rm(tempDirectory, { recursive: true, force: true });
     }
@@ -192,9 +253,9 @@ describe("lint execution", () => {
       });
 
       const summaryFormatterPath = getFormatterPathFromFirstRun();
-      expect(normalizePath(summaryFormatterPath ?? "")).toMatch(/\/\.eslint-checker\/summaryFormatter\.cjs$/);
+      expect(summaryFormatterPath).toBe(".eslint-checker/summaryFormatter.cjs");
 
-      const formatter = require(summaryFormatterPath ?? "");
+      const formatter = require(path.join(tempDirectory, summaryFormatterPath ?? ""));
       const formatted = formatter([
         {
           filePath: path.join(tempDirectory, "src", "a.js"),
@@ -265,12 +326,12 @@ describe("lint execution", () => {
       });
 
       const summaryFormatterPath = getFormatterPathFromFirstRun();
-      expect(path.isAbsolute(summaryFormatterPath ?? "")).toBe(true);
-      expect(normalizePath(summaryFormatterPath ?? "")).toMatch(/\/\.eslint-checker\/summaryFormatter\.cjs$/);
+      expect(summaryFormatterPath).toBe(".eslint-checker/summaryFormatter.cjs");
       expect(mockedRunCommand).toHaveBeenNthCalledWith(2, {
         cwd: tempDirectory,
         command: "npx",
         args: [
+          "--loglevel=error",
           "eslint",
           "src",
           ...sourceIgnoreArgs,
@@ -279,11 +340,12 @@ describe("lint execution", () => {
           "-o",
           path.join(".eslint-checker", "eslint-report.json")
         ],
+        env: quietNpmEnv,
         streamOutput: true,
         timeoutMs: 10000
       });
       expect(logger.commands).toHaveLength(2);
-      expect(normalizePath(logger.commands[0] ?? "")).toContain("/.eslint-checker/summaryFormatter.cjs -o .eslint-checker/eslint-summary.json");
+      expect(normalizePath(logger.commands[0] ?? "")).toContain("-f .eslint-checker/summaryFormatter.cjs -o .eslint-checker/eslint-summary.json");
       expect(normalizePath(logger.commands[1] ?? "")).toContain("--ignore-pattern **/*.min.js -f json -o .eslint-checker/eslint-report.json");
       expect(logger.errors).toEqual(["raw formatter failed"]);
     } finally {
@@ -355,6 +417,43 @@ describe("lint execution", () => {
         status: "failed",
         exitCode: 2,
         failureReason: "ESLint couldn't find the plugin \"react\"."
+      });
+    } finally {
+      await rm(tempDirectory, { recursive: true, force: true });
+    }
+  });
+
+  test("does not include npm warnings in the ESLint failure reason", async () => {
+    const tempDirectory = await mkdtemp(path.join(tmpdir(), "eslint-execute-npm-warn-filter-"));
+    try {
+      mockedRunCommand.mockResolvedValueOnce({
+        exitCode: 2,
+        stdout: "",
+        stderr: [
+          'npm warn Unknown user config "email". This will stop working in the next major version of npm.',
+          'npm warn Unknown user config "always-auth". This will stop working in the next major version of npm.',
+          "There was a problem loading formatter: .eslint-checker/summaryFormatter.cjs",
+          "Error: Cannot find module '.eslint-checker/summaryFormatter.cjs'"
+        ].join("\n"),
+        durationMs: 20,
+        timedOut: false
+      });
+
+      await expect(
+        executeLint({
+          cwd: tempDirectory,
+          outputDirectory: ".eslint-checker",
+          timeoutSeconds: 10,
+          eslintAccess: connectedEslintAccess,
+          sourceEntries
+        })
+      ).resolves.toMatchObject({
+        status: "failed",
+        exitCode: 2,
+        failureReason: [
+          "There was a problem loading formatter: .eslint-checker/summaryFormatter.cjs",
+          "Error: Cannot find module '.eslint-checker/summaryFormatter.cjs'"
+        ].join("\n")
       });
     } finally {
       await rm(tempDirectory, { recursive: true, force: true });

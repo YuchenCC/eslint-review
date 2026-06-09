@@ -4,6 +4,7 @@ export interface RunCommandInput {
   cwd: string;
   command: string;
   args: string[];
+  env?: NodeJS.ProcessEnv;
   streamOutput?: boolean;
   timeoutMs: number;
 }
@@ -20,6 +21,7 @@ export async function runCommand({
   cwd,
   command,
   args,
+  env,
   streamOutput = false,
   timeoutMs
 }: RunCommandInput): Promise<RunCommandResult> {
@@ -27,6 +29,7 @@ export async function runCommand({
   try {
     const result = await execa(command, args, {
       cwd,
+      env,
       reject: false,
       stderr: streamOutput ? ["pipe", "inherit"] : "pipe",
       stdout: streamOutput ? ["pipe", "inherit"] : "pipe",

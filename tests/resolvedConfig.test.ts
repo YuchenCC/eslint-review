@@ -38,6 +38,11 @@ const sourceEntries: SourceEntries = {
   ]
 };
 
+const quietNpmEnv = {
+  NPM_CONFIG_LOGLEVEL: "error",
+  npm_config_loglevel: "error"
+};
+
 describe("resolved ESLint config collection", () => {
   beforeEach(() => {
     mockedRunCommand.mockReset();
@@ -81,7 +86,8 @@ describe("resolved ESLint config collection", () => {
       expect(mockedRunCommand).toHaveBeenCalledWith({
         cwd,
         command: "npx",
-        args: ["eslint", "--print-config", "packages/ui/src/button.tsx"],
+        args: ["--loglevel=error", "eslint", "--print-config", "packages/ui/src/button.tsx"],
+        env: quietNpmEnv,
         timeoutMs: 10000
       });
     } finally {

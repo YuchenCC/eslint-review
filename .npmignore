@@ -18,3 +18,4 @@ skills-lock.json
 .git*
 tsconfig.json
 vitest.config.ts
+*.bundle

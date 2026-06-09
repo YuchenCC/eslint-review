@@ -6,3 +6,5 @@ docs/baseprd.docx
 *.tgz
 skills-lock.json
 jup/
+.eslint-checker/
+*.bundle

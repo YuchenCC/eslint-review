@@ -171,6 +171,7 @@ describe("lint execution", () => {
       });
       expect(logger.commands).toHaveLength(1);
       expect(normalizePath(logger.commands[0] ?? "")).toContain("-f .eslint-checker/summaryFormatter.cjs -o .eslint-checker/eslint-summary.json");
+      expect(normalizePath(logger.commands[0] ?? "")).toContain("--ignore-pattern '**/*.min.js'");
     } finally {
       await rm(tempDirectory, { recursive: true, force: true });
     }
@@ -346,7 +347,7 @@ describe("lint execution", () => {
       });
       expect(logger.commands).toHaveLength(2);
       expect(normalizePath(logger.commands[0] ?? "")).toContain("-f .eslint-checker/summaryFormatter.cjs -o .eslint-checker/eslint-summary.json");
-      expect(normalizePath(logger.commands[1] ?? "")).toContain("--ignore-pattern **/*.min.js -f json -o .eslint-checker/eslint-report.json");
+      expect(normalizePath(logger.commands[1] ?? "")).toContain("--ignore-pattern '**/*.min.js' -f json -o .eslint-checker/eslint-report.json");
       expect(logger.errors).toEqual(["raw formatter failed"]);
     } finally {
       await rm(tempDirectory, { recursive: true, force: true });

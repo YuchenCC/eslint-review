@@ -68,7 +68,7 @@ export async function executeLint({
     "-o",
     summaryPath
   ];
-  const commandText = `npx ${args.join(" ")}`;
+  const commandText = formatCommand("npx", args);
   logger.command(commandText);
 
   const result = await runCommandWithProgress(
@@ -361,7 +361,7 @@ async function emitRawEslintReport({
     "-o",
     reportPath
   ];
-  const commandText = `npx ${args.join(" ")}`;
+  const commandText = formatCommand("npx", args);
   logger.command(commandText);
 
   const result = await runCommandWithProgress(
@@ -392,6 +392,18 @@ async function emitRawEslintReport({
 
 function buildIgnorePatternArgs(ignorePatterns: string[]): string[] {
   return ignorePatterns.flatMap((pattern) => ["--ignore-pattern", pattern]);
+}
+
+function formatCommand(command: string, args: string[]): string {
+  return [command, ...args].map(shellQuoteArg).join(" ");
+}
+
+function shellQuoteArg(value: string): string {
+  if (/^[A-Za-z0-9_./:=@+-]+$/.test(value)) {
+    return value;
+  }
+
+  return `'${value.replaceAll("'", "'\\''")}'`;
 }
 
 function normalizeCliPath(value: string): string {

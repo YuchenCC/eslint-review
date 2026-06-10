@@ -74,12 +74,14 @@ Markdown 文档是正式交付物，不再生成其他文档格式。
 ## Formal Report Rules
 
 - 当 `.eslint-checker/report.json` 存在时，将其作为 factual counts、statuses、package data、lint evidence、recommendations 的唯一事实来源；当它缺失时，只能使用失败上下文和日志填充失败原因与未采集状态，不得补造机器采集事实。
+- `report.json.schemaVersion` 当前为 `0.2.0`。生成 key data 和 Markdown report 时必须识别并映射 `checkerVersion`，且不得把 `checkerVersion` 当作用户可补全字段。
 - 不得编造 lint counts、disabled-rule counts、package data、execution status 或不存在的 evidence。
 - 事实缺失时使用固定 fallback value：`unknown`、`not_collected`、`skipped`、`not_applicable`、`null`、`[]` 或已记录的 failure reason。
 - 数值字段已知时必须是 number；未采集时使用 `null`，不要用中文描述替代数值。
 - narrative content 使用中文；只有技术类专业术语、关键技术栈、字段名、artifact 名、ruleId、command、路径、包名可以使用 English。
 - 必须提及默认产物：`report.json`、`summary.md`、`eslint-summary.json`、`eslint-config.json`、`lint-log.txt`。
 - `eslint-report.json` 是 opt-in raw debug artifact。key data 中必须保留该字段；不存在时写 `null`。Markdown 产物清单中必须保留该行并说明 `默认未生成` 或 `未生成`。
+- raw debug artifact 是否生成以 `artifacts.eslintReportJson` 为准；`lintExecution.rawEslintReportGenerated` 只能作为辅助执行事实，不得替代 artifact path。
 - 使用 `lintEvidence` 写代表性问题示例，但不得扩展到记录样例之外。
 - 区分 `eslintConfigAnalysis` 与 `eslintResolvedConfig`：前者是 static governance analysis，后者或 `eslint-config.json` 是 ESLint `--print-config` 产出的 effective config。
 
@@ -157,6 +159,7 @@ Required top-level shape and fields:
 ```json
 {
   "schemaVersion": "1.0",
+  "checkerVersion": "unknown",
   "generatedAt": "unknown",
   "project": {},
   "environment": {},
@@ -175,16 +178,17 @@ Required fields:
 
 | Area | Fields |
 | --- | --- |
-| project | `packageName`, `packageVersion`, `stack`, `gitBranch`, `gitDirty`, `projectRootLabel` |
+| root | `schemaVersion`, `checkerVersion`, `generatedAt`, `generatedAtBeijing` |
+| project | `packageName`, `packageVersion`, `stack`, `gitBranch`, `gitCommit`, `gitDirty`, `projectRootLabel` |
 | environment | `nodeVersion`, `packageManager`, `packageManagerVersion` |
 | eslintAccess | `dependencyStatus`, `configStatus`, `eslintConfigStatus`, `lintScriptStatus` |
-| configQuality | `qualityStatus`, `disabledFormat`, `stackRuleCoverage`, `resolvedConfigStatus` |
-| disableUsage | `totalDisables`, `fileLevelDisables`, `broadDisables`, `concentratedFiles` |
+| configQuality | `qualityStatus`, `disabledRuleCount`, `disabledFormatRules`, `disabledQualityRules`, `disabledStackRules`, `disabledOtherRules`, `stackRuleCoverage`, `resolvedConfigStatus` |
+| disableUsage | `totalDisables`, `fileLevelDisables`, `disableWithoutRuleCount`, `broadDisables`, `concentratedFiles`, `eslintIgnorePatterns`, `effectiveIgnorePatterns` |
 | lintExecution | `command`, `status`, `timeoutSeconds`, `exitCode`, `recoveryStatus`, `failureReason` |
-| lintResult | `errorCount`, `warningCount`, `fixableErrorCount`, `fixableWarningCount`, `topRules`, `topFiles` |
+| lintResult | `errorCount`, `warningCount`, `fixableErrorCount`, `fixableWarningCount`, `fileCount`, `problemFileCount`, `topRules`, `topFiles` |
 | risk | `level`, `reasons`, `governanceImpact`, `deliveryImpact` |
 | recommendations | data-supported action list |
-| artifacts | `reportJson`, `summaryMd`, `eslintSummaryJson`, `eslintConfigJson`, `lintLogTxt`, `eslintReportJson` |
+| artifacts | `reportJson`, `summaryMarkdown`, `eslintSummaryJson`, `eslintConfigJson`, `lintLog`, `eslintReportJson` |
 
 即使某个 area 没有采集到任何事实，也必须保留该 area 和字段名。不得用空对象替代 required fields；字段值按 Structural Consistency Rules 使用 `unknown`、`null`、`[]` 或状态值。
 
@@ -199,6 +203,7 @@ Required content:
 - 报告标题：`ESLint 治理检查报告`
 - 项目名称
 - system、center、owner；未提供时写 `unknown`
+- checker 版本；从 `report.json.checkerVersion` 映射，缺失时写 `unknown`
 - 检查时间；缺失时写 `unknown`
 - 数据来源声明：若 `report.json` 存在，写 `本报告基于 .eslint-checker/report.json 生成`；若缺失，写 `本报告基于检查失败上下文和 .eslint-checker/lint-log.txt 生成，机器采集事实未完成`
 
@@ -218,7 +223,7 @@ Subsections:
 Subsections:
 
 1. `2.1 项目信息`：package name/version、stack、project root label。
-2. `2.2 Git 状态`：branch、dirty status、commit if available。
+2. `2.2 Git 状态`：branch、commit、dirty status。
 3. `2.3 Node 与包管理器`：Node version、package manager、package manager version。
 4. `2.4 产物清单`：列出 artifacts 和存在状态。
 
@@ -238,10 +243,12 @@ Subsections:
 
 Subsections:
 
-1. `4.1 配置可维护性`：disabled format、parser/settings clarity、maintainability facts。
-2. `4.2 规则覆盖情况`：stack-specific rules 和 missing/weak coverage。
+1. `4.1 配置可维护性`：disabled rule count、disabled format rules、parser/settings clarity、maintainability facts。
+2. `4.2 规则覆盖情况`：stack-specific rules、disabled stack rules 和 missing/weak coverage。
 3. `4.3 resolved config 采集状态`：是否采集 `eslint-config.json`。
 4. `4.4 Config 风险判断`：由 config quality 导致的 governance risk。
+
+Config 质量分析必须展示 `eslintConfigAnalysis.disabledRuleCount`，并按 `disabledFormatRules`、`disabledQualityRules`、`disabledStackRules`、`disabledOtherRules` 四类分别展示数量和规则列表。列表为空时写 `无`，不得只展示 disable 总量或把四类合并成一类。
 
 ### 5. Disable 使用分析
 
@@ -249,11 +256,19 @@ Subsections:
 
 1. `5.1 disable 总量`
 2. `5.2 file-level disable`
-3. `5.3 broad disable`
-4. `5.4 集中度分析`
-5. `5.5 治理影响`
+3. `5.3 broad disable 与未指定规则 disable`
+4. `5.4 .eslintignore 与 effective ignore patterns`
+5. `5.5 集中度分析`
+6. `5.6 治理影响`
 
 仅使用 report data 中记录的 file paths 和 counts，不推断源码意图。
+
+Disable 使用分析必须区分两类概念：
+
+- `eslintConfigAnalysis.disabled*Rules` 表示 ESLint 配置中关闭的规则。
+- `eslintDisableAnalysis.totalDisableCount`、`fileLevelDisableCount`、`disableWithoutRuleCount`、`broadDisableCount` 表示源码注释中的 disable 使用。
+
+如果 `eslintDisableAnalysis.eslintIgnorePatterns` 非空，必须展示 `.eslintignore` 排除的 patterns，并说明这些路径会从 disable scanning 中排除。`effectiveIgnorePatterns` 必须作为实际扫描忽略口径展示；无数据时保留字段并写 `无` 或 `未采集`。
 
 ### 6. Lint 执行结果
 

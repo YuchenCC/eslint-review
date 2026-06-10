@@ -90,4 +90,20 @@ describe("ESLint governance report skill template", () => {
     expect(skill).toContain("Asia/Shanghai");
     expect(skill).toContain("如果 `report.json` 中是 UTC 时间，展示前必须转换为北京时间");
   });
+
+  test("tracks current report.json governance fields in generated outputs", async () => {
+    const skill = await readFile(skillPath, "utf8");
+
+    expect(skill).toContain("`report.json.schemaVersion` 当前为 `0.2.0`");
+    expect(skill).toContain("`checkerVersion`");
+    expect(skill).toContain("disabledFormatRules");
+    expect(skill).toContain("disabledQualityRules");
+    expect(skill).toContain("disabledStackRules");
+    expect(skill).toContain("disabledOtherRules");
+    expect(skill).toContain("eslintIgnorePatterns");
+    expect(skill).toContain("effectiveIgnorePatterns");
+    expect(skill).toContain("disableWithoutRuleCount");
+    expect(skill).toContain("summaryMarkdown");
+    expect(skill).toContain("lintLog");
+  });
 });

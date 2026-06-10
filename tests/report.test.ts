@@ -2,6 +2,7 @@ import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { beforeEach, describe, expect, test, vi } from "vitest";
+import packageJson from "../package.json" with { type: "json" };
 import { runChecker } from "../src/index.js";
 import { checkerReportSchema } from "../src/report/schema.js";
 import { assessRisk } from "../src/report/risk.js";
@@ -469,6 +470,7 @@ describe("report artifacts", () => {
       });
 
       const output = consoleLog.mock.calls.map((call) => call.join(" ")).join("\n");
+      expect(consoleLog.mock.calls[0]?.join(" ")).toBe(`[eslint-checker] eslint-checker version: ${packageJson.version}`);
       expect(output).toContain("[eslint-checker] [1/7] Initializing check");
       expect(output).toContain("[eslint-checker] [2/7] Discovering project and static ESLint context");
       expect(output).toContain("[eslint-checker] [3/7] Collecting resolved ESLint config");

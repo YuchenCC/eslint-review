@@ -1,4 +1,4 @@
-import { rm } from "node:fs/promises";
+import { readFile, rm } from "node:fs/promises";
 import path from "node:path";
 import type { CheckerReport, LintRecovery, RunCheckerInput } from "./types.js";
 import { analyzeEslintConfig } from "./analysis/configAnalysis.js";
@@ -15,13 +15,14 @@ import { writeArtifacts } from "./report/artifacts.js";
 import { assessRisk } from "./report/risk.js";
 import { pathExists } from "./utils/fs.js";
 
-const CHECKER_VERSION = "0.1.0";
 const SCHEMA_VERSION = "0.2.0";
 
 export async function runChecker({ cwd, options }: RunCheckerInput): Promise<CheckerReport> {
   const outputDirectory = normalizeOutputDirectory(options.output);
   const timeoutSeconds = Number.parseInt(options.timeout, 10);
   const logger = createLogger({ console: options.console });
+  const checkerVersion = await readCheckerPackageVersion();
+  logger.info(`eslint-checker version: ${checkerVersion}`);
   logger.info("[1/7] Initializing check");
   await prepareOutputDirectory(cwd, outputDirectory, logger);
   logger.info("[2/7] Discovering project and static ESLint context");
@@ -120,7 +121,7 @@ export async function runChecker({ cwd, options }: RunCheckerInput): Promise<Che
   logger.info("[6/7] Assessing risk and composing report");
   const reportWithoutRisk = {
     schemaVersion: SCHEMA_VERSION,
-    checkerVersion: CHECKER_VERSION,
+    checkerVersion,
     generatedAt: new Date().toISOString(),
     systemInfo: {
       system: options.system ?? "unknown",
@@ -173,6 +174,12 @@ export async function runChecker({ cwd, options }: RunCheckerInput): Promise<Che
   await writeArtifacts(cwd, report, logger.toText());
   logger.info(`Done. Report: ${outputDirectory}/report.json`);
   return report;
+}
+
+async function readCheckerPackageVersion(): Promise<string> {
+  const packageJsonPath = new URL("../package.json", import.meta.url);
+  const packageJson = JSON.parse(await readFile(packageJsonPath, "utf8")) as { version?: unknown };
+  return typeof packageJson.version === "string" ? packageJson.version : "unknown";
 }
 
 function normalizeOutputDirectory(outputDirectory: string): ".eslint-checker" {

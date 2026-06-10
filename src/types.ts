@@ -86,6 +86,7 @@ export interface EslintAccess {
 export interface SourceEntries {
   entries: string[];
   ignorePatterns: string[];
+  eslintIgnorePatterns?: string[];
 }
 
 export interface EslintConfigAnalysis {
@@ -106,6 +107,8 @@ export interface EslintConfigAnalysis {
 export interface EslintDisableAnalysis {
   status: CollectionStatus;
   scannedDirectory: string;
+  eslintIgnorePatterns: string[];
+  effectiveIgnorePatterns: string[];
   totalDisableCount: number;
   fileLevelDisableCount: number;
   disableWithoutRuleCount: number;

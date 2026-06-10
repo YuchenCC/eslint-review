@@ -40,8 +40,55 @@ describe("ESLint analysis", () => {
         "eslint:recommended",
         "@vue/typescript/recommended"
       ]),
-      disabledFormatRules: expect.arrayContaining(["quotes"])
+      disabledFormatRules: []
     });
+  });
+
+  test("counts local referenced disabled rules but ignores package default disabled rules", async () => {
+    const cwd = await mkdtemp(path.join(tmpdir(), "eslint-config-disabled-local-"));
+    try {
+      await Promise.all([
+        mkdir(path.join(cwd, "config"), { recursive: true }),
+        mkdir(path.join(cwd, "node_modules/shared-config"), { recursive: true })
+      ]);
+      await writeFile(
+        path.join(cwd, "package.json"),
+        JSON.stringify({ name: "config-disabled-local", version: "1.0.0" }),
+        "utf8"
+      );
+      await writeFile(
+        path.join(cwd, ".eslintrc.js"),
+        [
+          "module.exports = {",
+          "  extends: [require.resolve('./config/base.js'), require.resolve('shared-config')],",
+          "  rules: { semi: 'off', eqeqeq: 0 }",
+          "};",
+          ""
+        ].join("\n"),
+        "utf8"
+      );
+      await writeFile(
+        path.join(cwd, "config/base.js"),
+        "module.exports = { rules: { quotes: ['off'], curly: [0] } };\n",
+        "utf8"
+      );
+      await writeFile(
+        path.join(cwd, "node_modules/shared-config/index.js"),
+        "module.exports = { rules: { indent: 'off', 'no-console': 0 } };\n",
+        "utf8"
+      );
+
+      await expect(analyzeEslintConfig(cwd)).resolves.toMatchObject({
+        status: "success",
+        analyzedFiles: expect.arrayContaining([".eslintrc.js", "config/base.js", "node_modules/shared-config/index.js"]),
+        resolvedConfigFiles: expect.arrayContaining(["config/base.js", "node_modules/shared-config/index.js"]),
+        disabledRuleCount: 4,
+        disabledFormatRules: ["semi", "quotes"],
+        disabledQualityRules: ["eqeqeq", "curly"]
+      });
+    } finally {
+      await rm(cwd, { recursive: true, force: true });
+    }
   });
 
   test("keeps root config analysis when jupui shared config cannot be resolved", async () => {
@@ -92,6 +139,35 @@ describe("ESLint analysis", () => {
           expect.objectContaining({ filePath: "packages/ui/src/view.tsx", disableCount: 1 }),
           expect.objectContaining({ filePath: "src/index.ts", disableCount: 1 })
         ]
+      });
+    } finally {
+      await rm(cwd, { recursive: true, force: true });
+    }
+  });
+
+  test("uses eslintignore patterns as disable scan governance evidence", async () => {
+    const cwd = await mkdtemp(path.join(tmpdir(), "eslint-disable-ignore-"));
+    try {
+      await Promise.all([
+        mkdir(path.join(cwd, "src/generated"), { recursive: true }),
+        mkdir(path.join(cwd, "src/manual"), { recursive: true })
+      ]);
+      await Promise.all([
+        writeFile(path.join(cwd, "src/generated/api.ts"), "/* eslint-disable */\n", "utf8"),
+        writeFile(path.join(cwd, "src/manual/page.ts"), "/* eslint-disable */\n", "utf8")
+      ]);
+
+      await expect(
+        scanEslintDisable(cwd, {
+          ...sourceEntries,
+          eslintIgnorePatterns: ["src/generated/**"]
+        })
+      ).resolves.toMatchObject({
+        status: "success",
+        totalDisableCount: 1,
+        eslintIgnorePatterns: ["src/generated/**"],
+        effectiveIgnorePatterns: expect.arrayContaining(["src/generated/**"]),
+        findings: expect.arrayContaining([".eslintignore excludes 1 pattern from ESLint disable scanning"])
       });
     } finally {
       await rm(cwd, { recursive: true, force: true });

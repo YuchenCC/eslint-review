@@ -103,6 +103,8 @@ export const checkerReportSchema = z.object({
   eslintDisableAnalysis: z.object({
     status: z.string(),
     scannedDirectory: z.string(),
+    eslintIgnorePatterns: z.array(z.string()),
+    effectiveIgnorePatterns: z.array(z.string()),
     totalDisableCount: z.number(),
     fileLevelDisableCount: z.number(),
     disableWithoutRuleCount: z.number(),

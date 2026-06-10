@@ -29,6 +29,7 @@ function renderSummary(report: CheckerReport): string {
     `Extended configs: ${report.eslintConfigAnalysis.extendedConfigs.join(", ") || "none"}`,
     `Extended packages: ${report.eslintConfigAnalysis.extendedPackages.join(", ") || "none"}`,
     `Disable count: ${report.eslintDisableAnalysis.totalDisableCount}`,
+    `ESLint ignore patterns: ${report.eslintDisableAnalysis.eslintIgnorePatterns.join(", ") || "none"}`,
     `Lint execution: ${report.lintExecution.status}`,
     `Recovery: ${report.lintRecovery.status}`,
     `Risk: ${report.riskAssessment.level}`,

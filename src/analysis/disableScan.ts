@@ -8,10 +8,14 @@ const SOURCE_FILE_EXTENSIONS = "{js,jsx,ts,tsx,vue}";
 
 export async function scanEslintDisable(cwd: string, sourceEntries: SourceEntries): Promise<EslintDisableAnalysis> {
   const scannedDirectory = sourceEntries.entries.join(", ");
+  const eslintIgnorePatterns = sourceEntries.eslintIgnorePatterns ?? [];
+  const effectiveIgnorePatterns = [...sourceEntries.ignorePatterns, ...eslintIgnorePatterns];
   if (sourceEntries.entries.length === 0) {
     return {
       status: "skipped",
       scannedDirectory,
+      eslintIgnorePatterns,
+      effectiveIgnorePatterns,
       totalDisableCount: 0,
       fileLevelDisableCount: 0,
       disableWithoutRuleCount: 0,
@@ -27,7 +31,7 @@ export async function scanEslintDisable(cwd: string, sourceEntries: SourceEntrie
       cwd,
       onlyFiles: true,
       unique: true,
-      ignore: sourceEntries.ignorePatterns
+      ignore: effectiveIgnorePatterns
     }
   );
 
@@ -35,6 +39,8 @@ export async function scanEslintDisable(cwd: string, sourceEntries: SourceEntrie
     return {
       status: "skipped",
       scannedDirectory,
+      eslintIgnorePatterns,
+      effectiveIgnorePatterns,
       totalDisableCount: 0,
       fileLevelDisableCount: 0,
       disableWithoutRuleCount: 0,
@@ -89,12 +95,15 @@ export async function scanEslintDisable(cwd: string, sourceEntries: SourceEntrie
   return {
     status: "success",
     scannedDirectory,
+    eslintIgnorePatterns,
+    effectiveIgnorePatterns,
     totalDisableCount,
     fileLevelDisableCount,
     disableWithoutRuleCount,
     broadDisableCount,
     topFiles: topFiles.slice(0, 10),
     findings: buildFindings({
+      eslintIgnorePatterns,
       totalDisableCount,
       fileLevelDisableCount,
       disableWithoutRuleCount,
@@ -108,15 +117,20 @@ function normalizeRuleText(ruleText: string): string {
 }
 
 function buildFindings({
+  eslintIgnorePatterns,
   totalDisableCount,
   fileLevelDisableCount,
   disableWithoutRuleCount,
   broadDisableCount
 }: Pick<
   EslintDisableAnalysis,
-  "totalDisableCount" | "fileLevelDisableCount" | "disableWithoutRuleCount" | "broadDisableCount"
+  "eslintIgnorePatterns" | "totalDisableCount" | "fileLevelDisableCount" | "disableWithoutRuleCount" | "broadDisableCount"
 >): string[] {
   const findings: string[] = [];
+  if (eslintIgnorePatterns.length > 0) {
+    const patternLabel = eslintIgnorePatterns.length === 1 ? "pattern" : "patterns";
+    findings.push(`.eslintignore excludes ${eslintIgnorePatterns.length} ${patternLabel} from ESLint disable scanning`);
+  }
   if (totalDisableCount > 0) {
     findings.push(`Found ${totalDisableCount} ESLint disable comments in src`);
   }

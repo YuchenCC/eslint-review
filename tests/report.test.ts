@@ -155,6 +155,45 @@ describe("report artifacts", () => {
     }
   });
 
+  test("records eslintignore patterns in report and summary", async () => {
+    const cwd = await mkdtemp(path.join(tmpdir(), "eslint-checker-eslintignore-report-"));
+    await mkdir(path.join(cwd, "src/generated"), { recursive: true });
+    await Promise.all([
+      writeFile(
+        path.join(cwd, "package.json"),
+        JSON.stringify({ name: "eslintignore-report-fixture", version: "1.0.0" }),
+        "utf8"
+      ),
+      writeFile(path.join(cwd, ".eslintignore"), "# generated output\nsrc/generated/**\nlegacy.js\n", "utf8"),
+      writeFile(path.join(cwd, "src/generated/api.ts"), "/* eslint-disable */\n", "utf8")
+    ]);
+
+    try {
+      await runChecker({
+        cwd,
+        options: {
+          mode: "access",
+          output: ".eslint-checker",
+          timeout: "1",
+          recovery: true
+        }
+      });
+
+      const reportJson = JSON.parse(await readFile(path.join(cwd, ".eslint-checker/report.json"), "utf8"));
+      const summary = await readFile(path.join(cwd, ".eslint-checker/summary.md"), "utf8");
+
+      expect(reportJson.eslintDisableAnalysis).toMatchObject({
+        eslintIgnorePatterns: ["src/generated/**", "legacy.js"],
+        effectiveIgnorePatterns: expect.arrayContaining(["src/generated/**", "legacy.js"]),
+        totalDisableCount: 0
+      });
+      expect(summary).toContain("ESLint ignore patterns: src/generated/**, legacy.js");
+    } finally {
+      await rm(cwd, { force: true, recursive: true });
+    }
+  });
+
+
   test.each(["custom-output", "../outside-output", path.join(tmpdir(), "eslint-checker-absolute-output")])(
     "rejects unsupported output directory %s before deleting files",
     async (output) => {
@@ -684,6 +723,8 @@ function minimalRiskReport(
     eslintDisableAnalysis: {
       status: "success",
       scannedDirectory: "src",
+      eslintIgnorePatterns: [],
+      effectiveIgnorePatterns: [],
       totalDisableCount: 0,
       fileLevelDisableCount: 0,
       disableWithoutRuleCount: 0,

@@ -37,7 +37,8 @@ describe("source entry discovery", () => {
           "public/**",
           "**/public/**",
           "**/*.min.js"
-        ]
+        ],
+        eslintIgnorePatterns: []
       });
     } finally {
       await rm(cwd, { recursive: true, force: true });
@@ -52,6 +53,22 @@ describe("source entry discovery", () => {
 
       await expect(discoverSourceEntries(cwd, ".eslint-checker")).resolves.toMatchObject({
         entries: []
+      });
+    } finally {
+      await rm(cwd, { recursive: true, force: true });
+    }
+  });
+
+  test("reads eslintignore patterns separately from default source ignores", async () => {
+    const cwd = await mkdtemp(path.join(tmpdir(), "eslint-source-eslintignore-"));
+    try {
+      await mkdir(path.join(cwd, "src"), { recursive: true });
+      await writeFile(path.join(cwd, "src/index.ts"), "const value = 1;\n", "utf8");
+      await writeFile(path.join(cwd, ".eslintignore"), "\n# generated code\nsrc/generated/**\nlegacy.js\n", "utf8");
+
+      await expect(discoverSourceEntries(cwd, ".eslint-checker")).resolves.toMatchObject({
+        entries: ["src"],
+        eslintIgnorePatterns: ["src/generated/**", "legacy.js"]
       });
     } finally {
       await rm(cwd, { recursive: true, force: true });

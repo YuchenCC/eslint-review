@@ -1,4 +1,5 @@
 import { createRequire } from "node:module";
+import { realpath } from "node:fs/promises";
 import path from "node:path";
 import YAML from "yaml";
 import type { EslintConfigAnalysis } from "../types.js";
@@ -33,7 +34,8 @@ const STACK_RULES = [
   "react-hooks/rules-of-hooks"
 ];
 
-const DISABLED_TEXT_PATTERN = /['"]([^'"]+)['"]\s*:\s*(?:['"]off['"]|0|\[\s*(?:['"]off['"]|0))/g;
+const DISABLED_TEXT_PATTERN =
+  /(?:(?:['"]([^'"]+)['"])|([A-Za-z_$][\w$]*))\s*:\s*(?:['"]off['"]|0|\[\s*(?:['"]off['"]|0))/g;
 const REQUIRE_RESOLVE_PATTERN = /require\.resolve\(\s*['"]([^'"]+)['"]\s*\)/g;
 
 export async function analyzeEslintConfig(cwd: string): Promise<EslintConfigAnalysis> {
@@ -104,7 +106,9 @@ export async function analyzeEslintConfig(cwd: string): Promise<EslintConfigAnal
       analyzedFiles.push(resolvedConfig.relativePath);
       resolvedConfigFiles.push(resolvedConfig.relativePath);
       collectExtendedConfigsFromText(resolvedConfig.content, extendedConfigs);
-      collectDisabledRulesFromText(resolvedConfig.content, disabledRules);
+      if (!resolvedConfig.packageConfig) {
+        collectDisabledRulesFromText(resolvedConfig.content, disabledRules);
+      }
       weakenedStandardConfig ||= /extends\s*:\s*[^,\]}]*(standard|airbnb|recommended)/i.test(resolvedConfig.content);
     }
   }
@@ -144,14 +148,14 @@ async function resolveReferencedConfigs(
   cwd: string,
   content: string,
   limitations: string[]
-): Promise<Array<{ relativePath: string; content: string }>> {
-  const absoluteCwd = path.resolve(cwd);
+): Promise<Array<{ relativePath: string; content: string; packageConfig: boolean }>> {
+  const absoluteCwd = await realpath(cwd);
   const requireFromProject = createRequire(path.join(absoluteCwd, "package.json"));
-  const resolvedConfigs: Array<{ relativePath: string; content: string }> = [];
+  const resolvedConfigs: Array<{ relativePath: string; content: string; packageConfig: boolean }> = [];
 
   for (const match of content.matchAll(REQUIRE_RESOLVE_PATTERN)) {
     const request = match[1];
-    if (!request || request.startsWith(".") || path.isAbsolute(request)) {
+    if (!request || path.isAbsolute(request)) {
       continue;
     }
 
@@ -163,19 +167,20 @@ async function resolveReferencedConfigs(
       continue;
     }
 
-    const relativePath = normalizePath(path.relative(absoluteCwd, resolvedPath));
+    const realResolvedPath = await realpath(resolvedPath);
+    const relativePath = normalizePath(path.relative(absoluteCwd, realResolvedPath));
     if (relativePath.startsWith("../") || relativePath === "..") {
       limitations.push(`Resolved config ${request} outside project root`);
       continue;
     }
 
-    const resolvedContent = await readTextFile(resolvedPath);
+    const resolvedContent = await readTextFile(realResolvedPath);
     if (!resolvedContent) {
       limitations.push(`Could not read ${relativePath}`);
       continue;
     }
 
-    resolvedConfigs.push({ relativePath, content: resolvedContent });
+    resolvedConfigs.push({ relativePath, content: resolvedContent, packageConfig: !request.startsWith(".") });
   }
 
   return resolvedConfigs;
@@ -214,7 +219,7 @@ function collectDisabledRulesFromRecord(
 
 function collectDisabledRulesFromText(content: string, disabledRules: Set<string>): void {
   for (const match of content.matchAll(DISABLED_TEXT_PATTERN)) {
-    disabledRules.add(match[1]);
+    disabledRules.add(match[1] ?? match[2]);
   }
 }
 

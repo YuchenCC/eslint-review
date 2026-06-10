@@ -28,7 +28,12 @@ function renderSummary(report: CheckerReport): string {
     `Resolved config: ${report.eslintResolvedConfig.status}`,
     `Extended configs: ${report.eslintConfigAnalysis.extendedConfigs.join(", ") || "none"}`,
     `Extended packages: ${report.eslintConfigAnalysis.extendedPackages.join(", ") || "none"}`,
-    `Disable count: ${report.eslintDisableAnalysis.totalDisableCount}`,
+    `Disabled rule count: ${report.eslintConfigAnalysis.disabledRuleCount}`,
+    `Disabled format rules (${report.eslintConfigAnalysis.disabledFormatRules.length}): ${formatList(report.eslintConfigAnalysis.disabledFormatRules)}`,
+    `Disabled quality rules (${report.eslintConfigAnalysis.disabledQualityRules.length}): ${formatList(report.eslintConfigAnalysis.disabledQualityRules)}`,
+    `Disabled stack rules (${report.eslintConfigAnalysis.disabledStackRules.length}): ${formatList(report.eslintConfigAnalysis.disabledStackRules)}`,
+    `Disabled other rules (${report.eslintConfigAnalysis.disabledOtherRules.length}): ${formatList(report.eslintConfigAnalysis.disabledOtherRules)}`,
+    `ESLint disable comment count: ${report.eslintDisableAnalysis.totalDisableCount}`,
     `ESLint ignore patterns: ${report.eslintDisableAnalysis.eslintIgnorePatterns.join(", ") || "none"}`,
     `Lint execution: ${report.lintExecution.status}`,
     `Recovery: ${report.lintRecovery.status}`,
@@ -44,4 +49,8 @@ function renderSummary(report: CheckerReport): string {
     `- lint-log.txt: ${report.artifacts.lintLog}`,
     ""
   ].join("\n");
+}
+
+function formatList(values: string[]): string {
+  return values.join(", ") || "none";
 }

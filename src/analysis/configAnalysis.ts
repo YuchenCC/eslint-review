@@ -120,6 +120,8 @@ export async function analyzeEslintConfig(cwd: string): Promise<EslintConfigAnal
   const disabledFormatRules = FORMAT_RULES.filter((rule) => disabledRules.has(rule));
   const disabledQualityRules = QUALITY_RULES.filter((rule) => disabledRules.has(rule));
   const disabledStackRules = STACK_RULES.filter((rule) => disabledRules.has(rule));
+  const classifiedDisabledRules = new Set([...disabledFormatRules, ...disabledQualityRules, ...disabledStackRules]);
+  const disabledOtherRules = [...disabledRules].filter((rule) => !classifiedDisabledRules.has(rule)).sort();
   const disabledRuleCount = disabledRules.size;
 
   return {
@@ -131,6 +133,7 @@ export async function analyzeEslintConfig(cwd: string): Promise<EslintConfigAnal
     disabledFormatRules,
     disabledQualityRules,
     disabledStackRules,
+    disabledOtherRules,
     disabledRuleCount,
     weakenedStandardConfig: weakenedStandardConfig && disabledRuleCount >= 3,
     limitations,
@@ -330,6 +333,7 @@ function emptyAnalysis(status: EslintConfigAnalysis["status"], limitations: stri
     disabledFormatRules: [],
     disabledQualityRules: [],
     disabledStackRules: [],
+    disabledOtherRules: [],
     disabledRuleCount: 0,
     weakenedStandardConfig: false,
     limitations,

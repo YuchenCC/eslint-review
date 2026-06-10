@@ -193,6 +193,58 @@ describe("report artifacts", () => {
     }
   });
 
+  test("writes disabled rule category counts and rule lists in summary", async () => {
+    const cwd = await mkdtemp(path.join(tmpdir(), "eslint-checker-disabled-rules-summary-"));
+    await writeFile(
+      path.join(cwd, "package.json"),
+      JSON.stringify({ name: "disabled-rules-summary-fixture", version: "1.0.0" }),
+      "utf8"
+    );
+    await writeFile(
+      path.join(cwd, ".eslintrc.json"),
+      JSON.stringify({
+        rules: {
+          semi: "off",
+          eqeqeq: 0,
+          "react-hooks/rules-of-hooks": "off",
+          "import/no-unresolved": "off",
+          "no-debugger": 0
+        }
+      }),
+      "utf8"
+    );
+
+    try {
+      await runChecker({
+        cwd,
+        options: {
+          mode: "access",
+          output: ".eslint-checker",
+          timeout: "1",
+          recovery: true
+        }
+      });
+
+      const reportJson = JSON.parse(await readFile(path.join(cwd, ".eslint-checker/report.json"), "utf8"));
+      const summary = await readFile(path.join(cwd, ".eslint-checker/summary.md"), "utf8");
+
+      expect(reportJson.eslintConfigAnalysis).toMatchObject({
+        disabledRuleCount: 5,
+        disabledFormatRules: ["semi"],
+        disabledQualityRules: ["eqeqeq"],
+        disabledStackRules: ["react-hooks/rules-of-hooks"],
+        disabledOtherRules: ["import/no-unresolved", "no-debugger"]
+      });
+      expect(summary).toContain("Disabled rule count: 5");
+      expect(summary).toContain("Disabled format rules (1): semi");
+      expect(summary).toContain("Disabled quality rules (1): eqeqeq");
+      expect(summary).toContain("Disabled stack rules (1): react-hooks/rules-of-hooks");
+      expect(summary).toContain("Disabled other rules (2): import/no-unresolved, no-debugger");
+    } finally {
+      await rm(cwd, { force: true, recursive: true });
+    }
+  });
+
 
   test.each(["custom-output", "../outside-output", path.join(tmpdir(), "eslint-checker-absolute-output")])(
     "rejects unsupported output directory %s before deleting files",
@@ -706,6 +758,7 @@ function minimalRiskReport(
       disabledFormatRules: [],
       disabledQualityRules: [],
       disabledStackRules: [],
+      disabledOtherRules: [],
       disabledRuleCount: 0,
       weakenedStandardConfig: false,
       limitations: [],

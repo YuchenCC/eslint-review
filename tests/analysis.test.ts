@@ -26,8 +26,44 @@ describe("ESLint analysis", () => {
       disabledRuleCount: 4,
       disabledFormatRules: ["semi", "quotes"],
       disabledQualityRules: ["no-unused-vars", "eqeqeq"],
-      disabledStackRules: []
+      disabledStackRules: [],
+      disabledOtherRules: []
     });
+  });
+
+  test("classifies unrecognized disabled rules as other rules", async () => {
+    const cwd = await mkdtemp(path.join(tmpdir(), "eslint-config-disabled-other-"));
+    try {
+      await writeFile(
+        path.join(cwd, "package.json"),
+        JSON.stringify({ name: "config-disabled-other", version: "1.0.0" }),
+        "utf8"
+      );
+      await writeFile(
+        path.join(cwd, ".eslintrc.json"),
+        JSON.stringify({
+          rules: {
+            semi: "off",
+            eqeqeq: 0,
+            "react-hooks/rules-of-hooks": "off",
+            "import/no-unresolved": "off",
+            "no-debugger": 0
+          }
+        }),
+        "utf8"
+      );
+
+      await expect(analyzeEslintConfig(cwd)).resolves.toMatchObject({
+        status: "success",
+        disabledRuleCount: 5,
+        disabledFormatRules: ["semi"],
+        disabledQualityRules: ["eqeqeq"],
+        disabledStackRules: ["react-hooks/rules-of-hooks"],
+        disabledOtherRules: ["import/no-unresolved", "no-debugger"]
+      });
+    } finally {
+      await rm(cwd, { recursive: true, force: true });
+    }
   });
 
   test("resolves and analyzes jupui shared ESLint config references", async () => {
@@ -84,7 +120,8 @@ describe("ESLint analysis", () => {
         resolvedConfigFiles: expect.arrayContaining(["config/base.js", "node_modules/shared-config/index.js"]),
         disabledRuleCount: 4,
         disabledFormatRules: ["semi", "quotes"],
-        disabledQualityRules: ["eqeqeq", "curly"]
+        disabledQualityRules: ["eqeqeq", "curly"],
+        disabledOtherRules: []
       });
     } finally {
       await rm(cwd, { recursive: true, force: true });

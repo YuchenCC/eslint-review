@@ -98,6 +98,7 @@ export interface EslintConfigAnalysis {
   disabledFormatRules: string[];
   disabledQualityRules: string[];
   disabledStackRules: string[];
+  disabledOtherRules: string[];
   disabledRuleCount: number;
   weakenedStandardConfig: boolean;
   limitations: string[];

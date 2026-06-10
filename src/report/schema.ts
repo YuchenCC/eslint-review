@@ -84,6 +84,7 @@ export const checkerReportSchema = z.object({
     disabledFormatRules: z.array(z.string()),
     disabledQualityRules: z.array(z.string()),
     disabledStackRules: z.array(z.string()),
+    disabledOtherRules: z.array(z.string()),
     disabledRuleCount: z.number(),
     weakenedStandardConfig: z.boolean(),
     limitations: z.array(z.string()),

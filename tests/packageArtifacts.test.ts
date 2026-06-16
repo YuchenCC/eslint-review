@@ -13,3 +13,16 @@ describe("formatter artifact path", () => {
     expect(executeSource).not.toContain("summaryFormatter.js");
   });
 });
+
+describe("package runtime compatibility", () => {
+  test("declares Node 16.17 runtime support without Node 18-only dependencies", async () => {
+    const packageJson = JSON.parse(await readFile(path.join(process.cwd(), "package.json"), "utf8")) as {
+      engines?: { node?: string };
+      dependencies?: Record<string, string>;
+    };
+
+    expect(packageJson.engines?.node).toBe(">=16.17");
+    expect(packageJson.dependencies?.commander).toBe("^10.0.1");
+    expect(packageJson.dependencies?.execa).toBe("^8.0.1");
+  });
+});

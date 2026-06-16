@@ -2,6 +2,9 @@
   "name": "@sunny/eslint-checker",
   "version": "1.0.6",
   "type": "module",
+  "engines": {
+    "node": ">=16.17"
+  },
   "bin": {
     "eslint-checker": "dist/cli.js"
   },
@@ -13,8 +16,8 @@
     "lint": "eslint ."
   },
   "dependencies": {
-    "commander": "^12.1.0",
-    "execa": "^9.6.0",
+    "commander": "^10.0.1",
+    "execa": "^8.0.1",
     "fast-glob": "^3.3.2",
     "fs-extra": "^11.2.0",
     "yaml": "^2.5.1",

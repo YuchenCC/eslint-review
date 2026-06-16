@@ -27,14 +27,19 @@ export async function runCommand({
 }: RunCommandInput): Promise<RunCommandResult> {
   const startedAt = Date.now();
   try {
-    const result = await execa(command, args, {
+    const subprocess = execa(command, args, {
       cwd,
       env,
       reject: false,
-      stderr: streamOutput ? ["pipe", "inherit"] : "pipe",
-      stdout: streamOutput ? ["pipe", "inherit"] : "pipe",
+      stderr: "pipe",
+      stdout: "pipe",
       timeout: timeoutMs
     });
+    if (streamOutput) {
+      subprocess.stdout?.pipe(process.stdout);
+      subprocess.stderr?.pipe(process.stderr);
+    }
+    const result = await subprocess;
 
     return {
       exitCode: result.exitCode ?? null,
